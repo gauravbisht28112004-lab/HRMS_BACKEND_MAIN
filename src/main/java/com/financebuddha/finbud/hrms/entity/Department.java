@@ -3,6 +3,7 @@ package com.financebuddha.finbud.hrms.entity;
 import com.financebuddha.finbud.hrms.entity.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +14,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Department extends BaseEntity {
 
     @Column(name = "name", nullable = false, unique = true, length = 100)

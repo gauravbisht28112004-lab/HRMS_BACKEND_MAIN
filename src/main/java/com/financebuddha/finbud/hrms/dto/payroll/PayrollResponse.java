@@ -1,6 +1,7 @@
 package com.financebuddha.finbud.hrms.dto.payroll;
 
 import com.financebuddha.finbud.hrms.enums.PayrollStatus;
+import com.financebuddha.finbud.hrms.enums.SalaryStructureType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,6 +25,14 @@ public class PayrollResponse {
     private Integer year;
     private String monthYear;
 
+    // ------------------------------------------------------------------
+    // CTC / NTH model context
+    // ------------------------------------------------------------------
+    private SalaryStructureType structureType;
+    private BigDecimal monthlyGrossCtc;
+    private Integer workingDays;
+    private BigDecimal lopDays;
+
     // Attendance summary
     private Integer totalWorkingDays;
     private BigDecimal presentDays;
@@ -31,10 +40,13 @@ public class PayrollResponse {
     private BigDecimal leaveDays;
     private BigDecimal halfDays;
     private Integer weeklyOffDays;
+    private Integer holidays;
 
+    // ------------------------------------------------------------------
     // Earnings
-    private BigDecimal basicEarned;
-    private BigDecimal hraEarned;
+    // ------------------------------------------------------------------
+    private BigDecimal basicEarned;     // legacy; null for CTC-model payrolls
+    private BigDecimal hraEarned;       // legacy; null for CTC-model payrolls
     private BigDecimal daEarned;
     private BigDecimal conveyanceEarned;
     private BigDecimal medicalEarned;
@@ -42,13 +54,28 @@ public class PayrollResponse {
     private BigDecimal totalAllowances;
     private BigDecimal grossEarnings;
 
-    // Deductions
+    // ------------------------------------------------------------------
+    // Deductions — CTC model
+    // ------------------------------------------------------------------
+    private BigDecimal employerPf;
+    private BigDecimal employeePf;
+    private BigDecimal employerEsi;
+    private BigDecimal employeeEsi;
+    private BigDecimal lwfAmount;
+    private BigDecimal tdsAmount;
+
+    // Legacy / component deductions
     private BigDecimal pfDeduction;
     private BigDecimal esiDeduction;
     private BigDecimal ptDeduction;
     private BigDecimal lopDeduction;
     private BigDecimal otherDeductions;
     private BigDecimal totalDeductions;
+
+    // Incentives / reconciliation
+    private BigDecimal incentiveAmount;
+    private BigDecimal adjustments;
+    private String adjustmentReason;
 
     // Overtime
     private BigDecimal overtimeHours;
@@ -63,6 +90,7 @@ public class PayrollResponse {
     private LocalDateTime generatedAt;
     private String approvedBy;
     private LocalDateTime approvedAt;
+    private LocalDateTime paidAt;
     private Boolean payslipGenerated;
     private String payslipUrl;
 }

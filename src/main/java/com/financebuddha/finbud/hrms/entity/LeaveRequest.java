@@ -6,6 +6,7 @@ import com.financebuddha.finbud.hrms.enums.LeaveStatus;
 import com.financebuddha.finbud.hrms.enums.LeaveType;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class LeaveRequest extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

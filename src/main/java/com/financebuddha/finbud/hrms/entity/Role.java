@@ -4,6 +4,7 @@ import com.financebuddha.finbud.hrms.entity.base.BaseEntity;
 import com.financebuddha.finbud.hrms.enums.RoleType;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +15,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Role extends BaseEntity {
 
     @Enumerated(EnumType.STRING)

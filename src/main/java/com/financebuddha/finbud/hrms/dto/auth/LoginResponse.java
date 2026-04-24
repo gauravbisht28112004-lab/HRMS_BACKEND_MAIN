@@ -22,4 +22,16 @@ public class LoginResponse {
     private String email;
     private String fullName;
     private List<String> roles;
+
+    /**
+     * True when the user has never rotated the default password issued at
+     * import / bootstrap time. The frontend uses this to force the
+     * "change password" screen before any other navigation.
+     * <p>
+     * Derived server-side from {@code User.passwordChangedAt == null}:
+     * {@link com.financebuddha.finbud.hrms.entity.User#getPasswordChangedAt()}
+     * is set only after a successful call to {@code AuthService.changePassword},
+     * so a null value is the canonical "first login" signal.
+     */
+    private Boolean mustChangePassword;
 }

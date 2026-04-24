@@ -15,6 +15,7 @@ public interface PayrollMapper {
     @Mapping(target = "departmentName", expression = "java(payroll.getEmployee() != null && payroll.getEmployee().getDepartment() != null ? payroll.getEmployee().getDepartment().getName() : null)")
     @Mapping(target = "monthYear", expression = "java(String.valueOf(payroll.getMonth()) + \"/\" + String.valueOf(payroll.getYear()))")
     @Mapping(target = "approvedBy", expression = "java(payroll.getApprovedBy() != null ? payroll.getApprovedBy().getFullName() : null)")
+    // netPayInWords is derived by the service (NumberToWords util); mapper leaves it null
     PayrollResponse toResponse(Payroll payroll);
 
     List<PayrollResponse> toResponseList(List<Payroll> payrolls);

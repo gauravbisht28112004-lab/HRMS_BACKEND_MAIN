@@ -2,6 +2,7 @@ package com.financebuddha.finbud.hrms.service;
 
 import com.financebuddha.finbud.hrms.dto.common.PagedResponse;
 import com.financebuddha.finbud.hrms.dto.common.PaginationRequest;
+import com.financebuddha.finbud.hrms.dto.employee.EmployeeCreateResponse;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeDetailResponse;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeRequest;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeResponse;
@@ -11,7 +12,13 @@ import java.util.List;
 
 public interface EmployeeService {
 
-    EmployeeResponse createEmployee(EmployeeRequest request);
+    /**
+     * Create a new employee and auto-provision a User account so the new hire
+     * can log in immediately with the Finbud default password. The generated
+     * credentials are returned on the response (one-time leak — the UI is
+     * expected to surface them in a copy-once modal).
+     */
+    EmployeeCreateResponse createEmployee(EmployeeRequest request);
 
     EmployeeResponse updateEmployee(Long id, EmployeeRequest request);
 

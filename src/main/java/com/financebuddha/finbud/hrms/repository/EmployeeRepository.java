@@ -20,9 +20,19 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     Optional<Employee> findByEmail(String email);
 
+    Optional<Employee> findByEmpCodeOnDevice(Integer empCodeOnDevice);
+
+    Optional<Employee> findByLoginUsername(String loginUsername);
+
     boolean existsByEmployeeId(String employeeId);
 
     boolean existsByEmail(String email);
+
+    boolean existsByEmpCodeOnDevice(Integer empCodeOnDevice);
+
+    boolean existsByLoginUsername(String loginUsername);
+
+    List<Employee> findAllByEmployeeIdIn(List<String> employeeIds);
 
     Page<Employee> findByStatus(EmployeeStatus status, Pageable pageable);
 

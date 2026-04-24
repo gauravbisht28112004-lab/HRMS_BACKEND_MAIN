@@ -2,32 +2,43 @@ package com.financebuddha.finbud.hrms.service.impl;
 
 import com.financebuddha.finbud.hrms.dto.common.PagedResponse;
 import com.financebuddha.finbud.hrms.dto.common.PaginationRequest;
+import com.financebuddha.finbud.hrms.dto.employee.EmployeeCreateResponse;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeDetailResponse;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeRequest;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeResponse;
 import com.financebuddha.finbud.hrms.entity.Department;
 import com.financebuddha.finbud.hrms.entity.Employee;
+import com.financebuddha.finbud.hrms.entity.Role;
 import com.financebuddha.finbud.hrms.entity.ShiftType;
+import com.financebuddha.finbud.hrms.entity.User;
 import com.financebuddha.finbud.hrms.enums.EmployeeStatus;
+import com.financebuddha.finbud.hrms.enums.RoleType;
 import com.financebuddha.finbud.hrms.exception.DuplicateResourceException;
 import com.financebuddha.finbud.hrms.exception.ResourceNotFoundException;
 import com.financebuddha.finbud.hrms.mapper.EmployeeMapper;
 import com.financebuddha.finbud.hrms.repository.DepartmentRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
+import com.financebuddha.finbud.hrms.repository.RoleRepository;
 import com.financebuddha.finbud.hrms.repository.ShiftTypeRepository;
+import com.financebuddha.finbud.hrms.repository.UserRepository;
 import com.financebuddha.finbud.hrms.service.EmployeeService;
+import com.financebuddha.finbud.hrms.service.SystemConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -39,13 +50,33 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final ShiftTypeRepository shiftTypeRepository;
     private final EmployeeMapper employeeMapper;
 
+    // ------------------------------------------------------------------
+    // Auth / user-provisioning collaborators. Injected so that the
+    // create-employee flow can auto-provision a matching User row (the
+    // "nd33454 can't login" bug fix — a manually-created employee used
+    // to have no corresponding login row, so /login always failed).
+    // ------------------------------------------------------------------
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final SystemConfigService systemConfig;
+
+    /** Fallback when {@code system_config.auth.default_password} is unset. Kept in sync with V7 Flyway. */
+    private static final String FALLBACK_DEFAULT_PASSWORD = "finbud@123";
+
     @Override
     @Transactional
-    public EmployeeResponse createEmployee(EmployeeRequest request) {
+    public EmployeeCreateResponse createEmployee(EmployeeRequest request) {
         log.info("Creating new employee with email: {}", request.getEmail());
 
-        if (employeeRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Employee", "email", request.getEmail());
+        // Uniqueness check only runs when the caller actually supplied an
+        // email. The Excel master data legitimately has rows without an
+        // email, and existsByEmail(null) would either match arbitrarily or
+        // fall through to a NullPointerException depending on the driver.
+        String requestEmail = request.getEmail();
+        if (requestEmail != null && !requestEmail.isBlank()
+                && employeeRepository.existsByEmail(requestEmail)) {
+            throw new DuplicateResourceException("Employee", "email", requestEmail);
         }
 
         Employee employee = employeeMapper.toEntity(request);
@@ -75,7 +106,99 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee savedEmployee = employeeRepository.save(employee);
         log.info("Employee created successfully with ID: {}", savedEmployee.getId());
 
-        return employeeMapper.toResponse(savedEmployee);
+        EmployeeResponse employeeResponse = employeeMapper.toResponse(savedEmployee);
+
+        // ------------------------------------------------------------------
+        // Auto-provision a User account so the new hire can log in. The
+        // policy (asked-and-answered with the HR admin):
+        //   - Username: employee.loginUsername if set, otherwise employeeId.toLowerCase()
+        //   - Password: system_config.auth.default_password (currently "finbud@123" per V7)
+        //   - Role:    ROLE_EMPLOYEE (role upgrades go through the admin-user surface)
+        //   - passwordChangedAt=null → LoginResponse.mustChangePassword=true on first login
+        // ------------------------------------------------------------------
+        UserProvisioningResult provisioning = autoProvisionUser(savedEmployee);
+
+        return EmployeeCreateResponse.builder()
+                .employee(employeeResponse)
+                .userProvisioned(provisioning.provisioned())
+                .generatedUsername(provisioning.username())
+                .generatedTemporaryPassword(provisioning.temporaryPassword())
+                .provisioningSkippedReason(provisioning.skippedReason())
+                .build();
+    }
+
+    /**
+     * Creates a User row for the newly saved employee. Kept non-fatal on skip
+     * paths (e.g. username collision after a retry, or User already exists)
+     * — the employee row has already been committed and should not be lost
+     * just because login provisioning hit an edge case.
+     */
+    private UserProvisioningResult autoProvisionUser(Employee savedEmployee) {
+        // Employee might already have a user row if the flow is retried after
+        // a partial failure. Treat that as a successful no-op so the caller
+        // doesn't see a misleading "couldn't provision" banner.
+        if (userRepository.existsByEmployeeId(savedEmployee.getId())) {
+            log.info("User already exists for employeeId={} — skipping auto-provision",
+                    savedEmployee.getEmployeeId());
+            return UserProvisioningResult.skipped("User already exists for this employee");
+        }
+
+        String username = savedEmployee.getLoginUsername() != null
+                && !savedEmployee.getLoginUsername().isBlank()
+                ? savedEmployee.getLoginUsername().trim()
+                : savedEmployee.getEmployeeId().toLowerCase();
+
+        if (userRepository.existsByUsername(username)) {
+            log.warn("Username '{}' already taken — skipping auto-provision for employeeId={}. "
+                            + "Admin must provision this user manually via /api/admin/users.",
+                    username, savedEmployee.getEmployeeId());
+            return UserProvisioningResult.skipped("Username '" + username + "' is already taken");
+        }
+
+        String rawPassword = systemConfig.getOrDefault(
+                SystemConfigService.Keys.AUTH_DEFAULT_PASSWORD, FALLBACK_DEFAULT_PASSWORD);
+
+        Role employeeRole = roleRepository.findByName(RoleType.ROLE_EMPLOYEE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Role", "name", RoleType.ROLE_EMPLOYEE.name()));
+        Set<Role> roles = new HashSet<>();
+        roles.add(employeeRole);
+
+        User user = User.builder()
+                .employee(savedEmployee)
+                .username(username)
+                .passwordHash(passwordEncoder.encode(rawPassword))
+                .isActive(Boolean.TRUE)
+                // passwordChangedAt intentionally left null — the login flow
+                // reads this as mustChangePassword=true and forces a rotation
+                // before the session is considered fully authenticated.
+                .roles(roles)
+                .build();
+
+        userRepository.save(user);
+        log.info("Auto-provisioned user '{}' for employeeId={} with ROLE_EMPLOYEE",
+                username, savedEmployee.getEmployeeId());
+
+        return UserProvisioningResult.success(username, rawPassword);
+    }
+
+    /**
+     * Internal carrier for the outcome of {@link #autoProvisionUser(Employee)}.
+     * Keeps {@code createEmployee} readable without needing four out-params.
+     */
+    private record UserProvisioningResult(
+            boolean provisioned,
+            String username,
+            String temporaryPassword,
+            String skippedReason) {
+
+        static UserProvisioningResult success(String username, String temporaryPassword) {
+            return new UserProvisioningResult(true, username, temporaryPassword, null);
+        }
+
+        static UserProvisioningResult skipped(String reason) {
+            return new UserProvisioningResult(false, null, null, reason);
+        }
     }
 
     @Override
@@ -86,9 +209,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", id));
 
-        // Check email uniqueness if changed
-        if (!employee.getEmail().equals(request.getEmail()) && employeeRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Employee", "email", request.getEmail());
+        // Check email uniqueness only when the email actually changed AND a
+        // new email was supplied. Many imported rows have no email at all
+        // (Excel master doesn't always carry one), so both sides can be
+        // null — {@link Objects#equals} handles that, and the existsByEmail
+        // lookup is skipped when the new value is null/blank.
+        String oldEmail = employee.getEmail();
+        String newEmail = request.getEmail();
+        boolean emailChanged = !Objects.equals(oldEmail, newEmail);
+        boolean newEmailHasValue = newEmail != null && !newEmail.isBlank();
+        if (emailChanged && newEmailHasValue && employeeRepository.existsByEmail(newEmail)) {
+            throw new DuplicateResourceException("Employee", "email", newEmail);
         }
 
         employeeMapper.updateEntityFromRequest(request, employee);

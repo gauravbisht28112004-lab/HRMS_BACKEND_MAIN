@@ -19,6 +19,9 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
 
     List<Payroll> findByEmployeeIdAndYear(Long employeeId, Integer year);
 
+    /** Paginated history for a single employee — used by the profile + payslip history view. */
+    Page<Payroll> findByEmployeeId(Long employeeId, Pageable pageable);
+
     Page<Payroll> findByMonthAndYear(Integer month, Integer year, Pageable pageable);
 
     List<Payroll> findByMonthAndYearAndStatus(Integer month, Integer year, PayrollStatus status);

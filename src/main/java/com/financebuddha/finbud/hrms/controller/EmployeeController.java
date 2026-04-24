@@ -3,6 +3,7 @@ package com.financebuddha.finbud.hrms.controller;
 import com.financebuddha.finbud.hrms.dto.common.ApiResponse;
 import com.financebuddha.finbud.hrms.dto.common.PagedResponse;
 import com.financebuddha.finbud.hrms.dto.common.PaginationRequest;
+import com.financebuddha.finbud.hrms.dto.employee.EmployeeCreateResponse;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeDetailResponse;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeRequest;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeResponse;
@@ -32,10 +33,20 @@ public class EmployeeController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
-    @Operation(summary = "Create employee", description = "Create a new employee")
-    public ResponseEntity<ApiResponse<EmployeeResponse>> createEmployee(@Valid @RequestBody EmployeeRequest request) {
-        EmployeeResponse response = employeeService.createEmployee(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Employee created successfully", response));
+    @Operation(summary = "Create employee",
+               description = "Create a new employee and auto-provision a login account. "
+                           + "The response includes the generated username and a one-time "
+                           + "plaintext temporary password which the UI must surface once "
+                           + "and never display again.")
+    public ResponseEntity<ApiResponse<EmployeeCreateResponse>> createEmployee(
+            @Valid @RequestBody EmployeeRequest request) {
+        EmployeeCreateResponse response = employeeService.createEmployee(request);
+        String message = Boolean.TRUE.equals(response.getUserProvisioned())
+                ? "Employee created and login provisioned successfully"
+                : "Employee created successfully (login not provisioned: "
+                        + response.getProvisioningSkippedReason() + ")";
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(message, response));
     }
 
     @PutMapping("/{id}")

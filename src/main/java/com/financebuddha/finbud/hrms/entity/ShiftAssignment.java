@@ -3,6 +3,7 @@ package com.financebuddha.finbud.hrms.entity;
 import com.financebuddha.finbud.hrms.entity.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 
@@ -12,7 +13,7 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 @TableGenerator(
         name = "shift_assignments_gen",
         table = "id_generator",

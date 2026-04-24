@@ -1,7 +1,7 @@
 package com.financebuddha.finbud.hrms.repository;
 
 import com.financebuddha.finbud.hrms.entity.Attendance;
-import com.financebuddha.finbud.hrms.enums.AttendanceStatus;
+import com.financebuddha.finbud.hrms.enums.AttendanceApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -54,4 +54,42 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     Double sumOvertimeHoursByEmployeeAndDateRange(@Param("employeeId") Long employeeId,
                                                   @Param("startDate") LocalDate startDate,
                                                   @Param("endDate") LocalDate endDate);
+
+    // ---------------------------------------------------------------------
+    // Approval workflow helpers
+    // ---------------------------------------------------------------------
+
+    /** Approval inbox — all pending rows across the org, for HR/Admin. */
+    List<Attendance> findByApprovalStatusOrderByAttendanceDateDescIdDesc(AttendanceApprovalStatus status);
+
+    /** Approval inbox scoped to one manager's direct reports, for TL. */
+    @Query("""
+            SELECT a FROM Attendance a
+            WHERE a.approvalStatus = :status
+              AND a.employee.manager.id = :managerId
+            ORDER BY a.attendanceDate DESC, a.id DESC
+            """)
+    List<Attendance> findByStatusAndManager(@Param("status") AttendanceApprovalStatus status,
+                                            @Param("managerId") Long managerId);
+
+    /** Daily driver for the nightly auto-absent scheduler. */
+    @Query("""
+            SELECT e.id FROM Employee e
+            WHERE e.status = com.financebuddha.finbud.hrms.enums.EmployeeStatus.ACTIVE
+              AND NOT EXISTS (
+                SELECT 1 FROM Attendance a
+                WHERE a.employee.id = e.id AND a.attendanceDate = :date
+              )
+            """)
+    List<Long> findActiveEmployeeIdsWithoutAttendance(@Param("date") LocalDate date);
+
+    /** Rows where employee punched in but never punched out for a given date. */
+    @Query("""
+            SELECT a FROM Attendance a
+            WHERE a.attendanceDate = :date
+              AND a.punchIn IS NOT NULL
+              AND a.punchOut IS NULL
+              AND a.isMissingPunch = false
+            """)
+    List<Attendance> findUnclosedPunchesForDate(@Param("date") LocalDate date);
 }

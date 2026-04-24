@@ -1,9 +1,11 @@
 package com.financebuddha.finbud.hrms.entity;
 
 import com.financebuddha.finbud.hrms.entity.base.BaseEntity;
+import com.financebuddha.finbud.hrms.enums.AttendanceApprovalStatus;
 import com.financebuddha.finbud.hrms.enums.AttendanceStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,7 +17,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 @TableGenerator(
         name = "attendance_gen",
         table = "id_generator",
@@ -94,4 +96,72 @@ public class Attendance extends BaseEntity {
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    // ---------------------------------------------------------------------
+    // Geo-location captured from the browser for each punch. Latitude &
+    // longitude are checked against the employee's OfficeLocation when
+    // enforce_geofence is on. Accuracy helps us log how trustworthy the
+    // reading is (mobile GPS can be metres or kilometres off).
+    // ---------------------------------------------------------------------
+
+    @Column(name = "punch_in_latitude", precision = 10, scale = 7)
+    private BigDecimal punchInLatitude;
+
+    @Column(name = "punch_in_longitude", precision = 10, scale = 7)
+    private BigDecimal punchInLongitude;
+
+    @Column(name = "punch_in_accuracy_meters", precision = 8, scale = 2)
+    private BigDecimal punchInAccuracyMeters;
+
+    @Column(name = "punch_out_latitude", precision = 10, scale = 7)
+    private BigDecimal punchOutLatitude;
+
+    @Column(name = "punch_out_longitude", precision = 10, scale = 7)
+    private BigDecimal punchOutLongitude;
+
+    @Column(name = "punch_out_accuracy_meters", precision = 8, scale = 2)
+    private BigDecimal punchOutAccuracyMeters;
+
+    // ---------------------------------------------------------------------
+    // Approval workflow. A portal-marked attendance row is PENDING until a
+    // TL / HR / Admin approves it. Rejections keep the row (for audit)
+    // with a reason. Historical pre-V11 rows are migrated to APPROVED.
+    // ---------------------------------------------------------------------
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", nullable = false, length = 20)
+    @Builder.Default
+    private AttendanceApprovalStatus approvalStatus = AttendanceApprovalStatus.PENDING;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by_id")
+    private Employee approvedBy;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    // ---------------------------------------------------------------------
+    // Scheduler bookkeeping. is_auto_absent is set by the nightly job that
+    // creates ABSENT rows for missing punches. is_missing_punch is set when
+    // punch-in exists but punch-out does not by the shift end time. HR can
+    // override either, in which case manually_edited_by* captures who did.
+    // ---------------------------------------------------------------------
+
+    @Column(name = "is_auto_absent", nullable = false)
+    @Builder.Default
+    private Boolean isAutoAbsent = false;
+
+    @Column(name = "is_missing_punch", nullable = false)
+    @Builder.Default
+    private Boolean isMissingPunch = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manually_edited_by_id")
+    private Employee manuallyEditedBy;
+
+    @Column(name = "manually_edited_at")
+    private LocalDateTime manuallyEditedAt;
 }

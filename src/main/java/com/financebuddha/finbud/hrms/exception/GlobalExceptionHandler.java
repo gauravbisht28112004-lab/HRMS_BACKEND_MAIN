@@ -101,9 +101,43 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ApiResponse<Void>> handleGlobalException(Exception ex, WebRequest request) {
+        // Full stack trace always goes to the server log — that's the canonical
+        // debug surface and we don't want to leak it over HTTP.
         log.error("Unexpected error occurred: ", ex);
-        ApiResponse<Void> response = ApiResponse.error("An unexpected error occurred. Please try again later.");
+
+        // Body. The user-facing message stays sanitised. We additionally include
+        // the exception class and root-cause message in the `errors` array so
+        // developers using curl/Postman/Swagger can diagnose without tailing
+        // logs. This is safe for non-prod; gate behind a profile flag before
+        // shipping to a real customer.
+        Throwable root = rootCause(ex);
+        String exClass = root.getClass().getName();
+        String exMsg = root.getMessage() == null ? "(no message)" : root.getMessage();
+        // Trim absurdly long messages (some Hibernate exceptions dump the full
+        // SQL — useful but we cap it so the JSON stays human-readable).
+        if (exMsg.length() > 500) {
+            exMsg = exMsg.substring(0, 500) + "… (truncated; see server log)";
+        }
+
+        ApiResponse<Void> response = ApiResponse.error(
+                "An unexpected error occurred. Please try again later.",
+                List.of(exClass + ": " + exMsg));
         response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Walk the {@code cause} chain to the deepest non-null Throwable. Most
+     * Spring/Hibernate exceptions wrap the real culprit two or three layers
+     * deep ({@code TransactionSystemException → RollbackException →
+     * ConstraintViolationException → SQLException}); the root is what tells
+     * you what to actually fix.
+     */
+    private Throwable rootCause(Throwable t) {
+        Throwable cur = t;
+        while (cur.getCause() != null && cur.getCause() != cur) {
+            cur = cur.getCause();
+        }
+        return cur;
     }
 }

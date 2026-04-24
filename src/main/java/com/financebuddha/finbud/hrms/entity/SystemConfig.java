@@ -3,6 +3,7 @@ package com.financebuddha.finbud.hrms.entity;
 import com.financebuddha.finbud.hrms.entity.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "system_config")
@@ -10,7 +11,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class SystemConfig extends BaseEntity {
 
     @Column(name = "config_key", nullable = false, unique = true, length = 100)

@@ -11,7 +11,19 @@ import java.util.List;
 
 public interface PayrollService {
 
+    /**
+     * Convenience overload kept for callers that have only the three
+     * identifiers (employeeId / month / year) and no manual overrides.
+     * Delegates to the rich {@link #generatePayroll(PayrollGenerateRequest)}.
+     */
     PayrollResponse generatePayroll(Long employeeId, Integer month, Integer year);
+
+    /**
+     * Generate a single-employee payroll with full control:
+     * manual LOP, incentives override, adjustments, reason. The request's
+     * {@code employeeId} is required for this flow.
+     */
+    PayrollResponse generatePayroll(PayrollGenerateRequest request);
 
     List<PayrollResponse> generatePayrollForAll(PayrollGenerateRequest request);
 

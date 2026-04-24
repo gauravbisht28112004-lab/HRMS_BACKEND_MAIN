@@ -85,3 +85,10 @@ coverage/
 
 # Generated files
 *.generated.txt
+
+# Windows shortcuts (accidentally drag-dropped)
+*.lnk
+
+# Ad-hoc API dry-run dumps
+dry-run.json
+

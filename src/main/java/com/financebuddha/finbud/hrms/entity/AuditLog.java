@@ -48,7 +48,7 @@ public class AuditLog {
     @Column(name = "performed_at", nullable = false, updatable = false)
     private LocalDateTime performedAt;
 
-    @Column(name = "ip_address")
+    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
     @Column(name = "user_agent", columnDefinition = "TEXT")

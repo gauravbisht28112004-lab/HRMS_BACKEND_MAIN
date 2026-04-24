@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -26,5 +27,5 @@ public class ShiftTypeRequest {
     private Integer gracePeriodMinutes = 10;
     private List<Integer> weeklyOffDays;
     private Boolean isNightShift = false;
-    private Double overtimeThresholdHours = 8.0;
+    private BigDecimal overtimeThresholdHours = new BigDecimal("8.00");
 }

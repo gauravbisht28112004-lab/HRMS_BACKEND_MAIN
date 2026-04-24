@@ -16,7 +16,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -32,14 +35,28 @@ public class PayrollController {
 
     private final PayrollService payrollService;
 
+    /**
+     * Single-employee payroll generation. Accepts both the historical
+     * query-param form (employeeId/month/year) and the rich request body
+     * (which additionally supports manual LOP, incentives override, and
+     * free-form reconciliation adjustments). Body fields, when present,
+     * take precedence over query params.
+     */
     @PostMapping("/generate")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
-    @Operation(summary = "Generate payroll", description = "Generate payroll for employee")
+    @Operation(summary = "Generate payroll", description = "Generate payroll for a single employee (optionally with manual LOP + adjustments in the body)")
     public ResponseEntity<ApiResponse<PayrollResponse>> generatePayroll(
-            @RequestParam Long employeeId,
-            @RequestParam Integer month,
-            @RequestParam Integer year) {
-        PayrollResponse response = payrollService.generatePayroll(employeeId, month, year);
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year,
+            @RequestBody(required = false) PayrollGenerateRequest body) {
+
+        PayrollGenerateRequest req = body != null ? body : new PayrollGenerateRequest();
+        if (req.getEmployeeId() == null) req.setEmployeeId(employeeId);
+        if (req.getMonth() == null) req.setMonth(month);
+        if (req.getYear() == null) req.setYear(year);
+
+        PayrollResponse response = payrollService.generatePayroll(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Payroll generated successfully", response));
     }
 
@@ -118,10 +135,23 @@ public class PayrollController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/{payrollId}/payslip")
-    @Operation(summary = "Generate payslip", description = "Generate payslip PDF")
-    public ResponseEntity<ApiResponse<byte[]>> generatePayslipPdf(@PathVariable Long payrollId) {
+    /**
+     * Streams the payslip PDF as {@code application/pdf} so browsers and
+     * download helpers can open it directly without base64-decoding an
+     * {@code ApiResponse} envelope.
+     */
+    @GetMapping(value = "/{payrollId}/payslip", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    @Operation(summary = "Download payslip", description = "Download payslip as a PDF")
+    public ResponseEntity<byte[]> generatePayslipPdf(@PathVariable Long payrollId) {
         byte[] pdf = payrollService.generatePayslipPdf(payrollId);
-        return ResponseEntity.ok(ApiResponse.success(pdf));
+        ContentDisposition cd = ContentDisposition.attachment()
+                .filename("payslip-" + payrollId + ".pdf")
+                .build();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDisposition(cd);
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentLength(pdf.length);
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 }

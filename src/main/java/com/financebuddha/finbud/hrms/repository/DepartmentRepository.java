@@ -15,6 +15,13 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
     Optional<Department> findByCode(String code);
 
+    Optional<Department> findByName(String name);
+
+    // Used by the Excel import to match department names case-insensitively
+    // (e.g. "sales" / "Sales " / "SALES" all resolve to the same Department).
+    @Query("SELECT d FROM Department d WHERE LOWER(TRIM(d.name)) = LOWER(TRIM(:name))")
+    Optional<Department> findByNameIgnoreCase(@Param("name") String name);
+
     boolean existsByCode(String code);
 
     boolean existsByName(String name);

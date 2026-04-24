@@ -1,5 +1,6 @@
 package com.financebuddha.finbud.hrms.dto.attendance;
 
+import com.financebuddha.finbud.hrms.enums.AttendanceApprovalStatus;
 import com.financebuddha.finbud.hrms.enums.AttendanceStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +19,10 @@ public class AttendanceResponse {
 
     private Long id;
     private Long employeeId;
+    private String employeeCode;
     private String employeeName;
+    private String department;
+    private String designation;
     private LocalDate attendanceDate;
     private LocalDateTime punchIn;
     private LocalDateTime punchOut;
@@ -33,4 +37,24 @@ public class AttendanceResponse {
     private BigDecimal overtimeHours;
     private String deviceId;
     private String notes;
+
+    // Geo / approval surface
+    private BigDecimal punchInLatitude;
+    private BigDecimal punchInLongitude;
+    private BigDecimal punchInAccuracyMeters;
+    private BigDecimal punchOutLatitude;
+    private BigDecimal punchOutLongitude;
+    private BigDecimal punchOutAccuracyMeters;
+
+    private AttendanceApprovalStatus approvalStatus;
+    private Long approvedById;
+    private String approvedByName;
+    private LocalDateTime approvedAt;
+    private String rejectionReason;
+
+    private Boolean isAutoAbsent;
+    private Boolean isMissingPunch;
+    private Long manuallyEditedById;
+    private String manuallyEditedByName;
+    private LocalDateTime manuallyEditedAt;
 }

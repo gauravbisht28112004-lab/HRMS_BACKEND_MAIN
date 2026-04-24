@@ -3,7 +3,9 @@ package com.financebuddha.finbud.hrms.entity;
 import com.financebuddha.finbud.hrms.entity.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +16,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class ShiftType extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 50)
@@ -49,7 +51,7 @@ public class ShiftType extends BaseEntity {
 
     @Column(name = "overtime_threshold_hours", precision = 4, scale = 2)
     @Builder.Default
-    private Double overtimeThresholdHours = 8.0;
+    private BigDecimal overtimeThresholdHours = new BigDecimal("8.00");
 
     @OneToMany(mappedBy = "shiftType")
     @Builder.Default

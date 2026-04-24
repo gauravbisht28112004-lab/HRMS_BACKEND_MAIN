@@ -26,10 +26,29 @@ public interface SalaryStructureMapper {
     @Mapping(target = "version", ignore = true)
     SalaryStructure toEntity(SalaryStructureRequest request);
 
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "employee", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    void updateEntityFromRequest(SalaryStructureRequest request, @MappingTarget SalaryStructure salaryStructure);
+
+    /**
+     * Legacy allowance calculation — safe to call on CTC-model rows
+     * because every component defaults to ZERO in the entity. Components
+     * may still be null if the DB row pre-dates V2 migration, so we
+     * coalesce defensively.
+     */
     default BigDecimal calculateTotalAllowances(SalaryStructure salary) {
         if (salary == null) return BigDecimal.ZERO;
-        return salary.getDa().add(salary.getConveyanceAllowance())
-                .add(salary.getMedicalAllowance())
-                .add(salary.getSpecialAllowance());
+        return nz(salary.getDa())
+                .add(nz(salary.getConveyanceAllowance()))
+                .add(nz(salary.getMedicalAllowance()))
+                .add(nz(salary.getSpecialAllowance()));
+    }
+
+    static BigDecimal nz(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
     }
 }

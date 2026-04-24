@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -24,6 +25,6 @@ public class ShiftTypeResponse {
     private Integer gracePeriodMinutes;
     private List<Integer> weeklyOffDays;
     private Boolean isNightShift;
-    private Double overtimeThresholdHours;
+    private BigDecimal overtimeThresholdHours;
     private LocalDateTime createdAt;
 }

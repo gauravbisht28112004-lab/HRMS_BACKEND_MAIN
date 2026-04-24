@@ -66,7 +66,7 @@ public class AIServiceImpl implements AIService {
                     .query(request.getQuery())
                     .response(response)
                     .dataType(queryType)
-                    .tokensUsed(result.getUsage().getTotalTokens())
+                    .tokensUsed(result.getUsage() != null ? Math.toIntExact(result.getUsage().getTotalTokens()) : null)
                     .responseTimeMs(responseTime)
                     .build();
 
