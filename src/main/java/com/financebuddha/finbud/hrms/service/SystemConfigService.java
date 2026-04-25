@@ -33,6 +33,12 @@ public interface SystemConfigService {
 
         public static final String ATTENDANCE_DEVICE_API_KEY_HEADER = "attendance.device.api_key_header";
         public static final String ATTENDANCE_DEVICE_API_KEY        = "attendance.device.api_key";
+
+        /**
+         * Org-wide monthly disbursal goal in INR, surfaced on every
+         * dashboard. Settable by Admin only via SystemConfigController.
+         */
+        public static final String ORG_MONTHLY_GOAL_AMOUNT          = "org.monthly_goal_amount";
     }
 
     Optional<String> get(String key);

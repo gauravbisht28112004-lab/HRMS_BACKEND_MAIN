@@ -4,7 +4,9 @@ import com.financebuddha.finbud.hrms.dto.common.ApiResponse;
 import com.financebuddha.finbud.hrms.dto.common.PagedResponse;
 import com.financebuddha.finbud.hrms.dto.common.PaginationRequest;
 import com.financebuddha.finbud.hrms.dto.leave.LeaveApprovalRequest;
+import com.financebuddha.finbud.hrms.dto.leave.LeaveBalanceAdjustmentRequest;
 import com.financebuddha.finbud.hrms.dto.leave.LeaveBalanceResponse;
+import com.financebuddha.finbud.hrms.dto.leave.LeaveOverrideRequest;
 import com.financebuddha.finbud.hrms.dto.leave.LeaveRequestDTO;
 import com.financebuddha.finbud.hrms.dto.leave.LeaveResponse;
 import com.financebuddha.finbud.hrms.enums.LeaveStatus;
@@ -134,5 +136,30 @@ public class LeaveController {
             @RequestParam Integer year) {
         LeaveBalanceResponse response = leaveService.initializeLeaveBalance(employeeId, year);
         return ResponseEntity.ok(ApiResponse.success("Leave balance initialized", response));
+    }
+
+    @PatchMapping("/balance/{employeeId}/adjust")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    @Operation(summary = "Adjust leave balance",
+            description = "Signed delta on one bucket of an employee's balance. Required for comp-off credits and mistake corrections. Writes an audit log row.")
+    public ResponseEntity<ApiResponse<LeaveBalanceResponse>> adjustLeaveBalance(
+            @CurrentUser UserPrincipal currentUser,
+            @PathVariable Long employeeId,
+            @Valid @RequestBody LeaveBalanceAdjustmentRequest request) {
+        LeaveBalanceResponse response = leaveService.adjustBalance(employeeId, currentUser.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Leave balance adjusted", response));
+    }
+
+    @PostMapping("/{leaveRequestId}/override")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    @Operation(summary = "HR / Admin override",
+            description = "Forcibly flip an already-decided leave to APPROVED, REJECTED, or CANCELLED. "
+                        + "Adjusts balance, writes an audit row, and notifies the applicant + all approvers.")
+    public ResponseEntity<ApiResponse<LeaveResponse>> overrideLeave(
+            @CurrentUser UserPrincipal currentUser,
+            @PathVariable Long leaveRequestId,
+            @Valid @RequestBody LeaveOverrideRequest request) {
+        LeaveResponse response = leaveService.overrideLeave(leaveRequestId, currentUser.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Leave override applied", response));
     }
 }

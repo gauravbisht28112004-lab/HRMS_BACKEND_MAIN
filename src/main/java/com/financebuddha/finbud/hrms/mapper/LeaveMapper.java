@@ -34,9 +34,7 @@ public interface LeaveMapper {
 
     @Mapping(target = "employeeId", source = "employee.id")
     @Mapping(target = "employeeName", expression = "java(leaveBalance.getEmployee() != null ? leaveBalance.getEmployee().getFullName() : null)")
-    @Mapping(target = "casualLeaveBalance", expression = "java(leaveBalance.getCasualLeaveBalance())")
-    @Mapping(target = "sickLeaveBalance", expression = "java(leaveBalance.getSickLeaveBalance())")
+    @Mapping(target = "casualSickBalance", expression = "java(leaveBalance.getCasualSickBalance())")
     @Mapping(target = "paidLeaveBalance", expression = "java(leaveBalance.getPaidLeaveBalance())")
-    @Mapping(target = "wfhDaysBalance", expression = "java(leaveBalance.getWfhBalance())")
     LeaveBalanceResponse toBalanceResponse(LeaveBalance leaveBalance);
 }

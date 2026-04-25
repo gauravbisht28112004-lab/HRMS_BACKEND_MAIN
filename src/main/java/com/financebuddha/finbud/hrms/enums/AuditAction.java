@@ -9,5 +9,7 @@ public enum AuditAction {
     EXPORT,
     IMPORT,
     APPROVE,
-    REJECT
+    REJECT,
+    CANCEL,
+    OVERRIDE
 }

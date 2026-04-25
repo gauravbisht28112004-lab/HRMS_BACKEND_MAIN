@@ -1,11 +1,13 @@
 package com.financebuddha.finbud.hrms.controller;
 
 import com.financebuddha.finbud.hrms.dto.auth.AdminCreateUserRequest;
+import com.financebuddha.finbud.hrms.dto.auth.BulkPasswordResetResponse;
 import com.financebuddha.finbud.hrms.dto.auth.LoginResponse;
 import com.financebuddha.finbud.hrms.dto.auth.PasswordResetResponse;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserRolesRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserStatusRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UserAccountResponse;
+import com.financebuddha.finbud.hrms.dto.auth.UserLoginDebugResponse;
 import com.financebuddha.finbud.hrms.dto.common.ApiResponse;
 import com.financebuddha.finbud.hrms.service.AdminUserService;
 import com.financebuddha.finbud.hrms.service.AuthService;
@@ -111,5 +113,30 @@ public class AdminUserController {
         PasswordResetResponse response = adminUserService.resetPassword(userId);
         return ResponseEntity.ok(ApiResponse.success(
                 "Password reset to default — user must change on next login", response));
+    }
+
+    @GetMapping("/debug/{username}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    @Operation(summary = "Diagnose a login failure",
+               description = "Given a username that can't log in, figure out why: not provisioned, inactive, "
+                           + "locked, never-rotated password, or simply the wrong password. Returns a plain-English "
+                           + "diagnosis and a suggested action for the admin UI to surface as a button. "
+                           + "Never returns the password hash.")
+    public ResponseEntity<ApiResponse<UserLoginDebugResponse>> debugLogin(@PathVariable String username) {
+        return ResponseEntity.ok(ApiResponse.success(adminUserService.debugLogin(username)));
+    }
+
+    @PostMapping("/bulk-reset-passwords")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Bulk-reset every never-logged-in user to the default password",
+               description = "One-shot recovery from a provisioning run where the original temp passwords were "
+                           + "lost. Resets every user with passwordChangedAt IS NULL (i.e. never-rotated) back "
+                           + "to system_config.auth.default_password. Skips Admin and HR seed accounts. Returns "
+                           + "the default password and the list of usernames that were reset so HR can broadcast "
+                           + "credentials.")
+    public ResponseEntity<ApiResponse<BulkPasswordResetResponse>> bulkResetPasswords() {
+        BulkPasswordResetResponse response = adminUserService.bulkResetUntouchedAccounts();
+        return ResponseEntity.ok(ApiResponse.success(
+                "Reset " + response.getResetCount() + " account(s) to default", response));
     }
 }

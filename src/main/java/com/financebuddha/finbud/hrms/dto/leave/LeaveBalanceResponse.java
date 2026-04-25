@@ -7,6 +7,15 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * Wire shape of a per-employee per-year leave balance. Mirrors
+ * {@code LeaveBalance} after the V12 Finbud-policy refactor:
+ *   - casual + sick share a single pool
+ *   - paid/earned has its own pool
+ *   - carried-forward days are tracked separately so the UI can show
+ *     "fresh + carried = effective"
+ *   - WFH removed
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,21 +27,18 @@ public class LeaveBalanceResponse {
     private String employeeName;
     private Integer year;
 
-    private BigDecimal casualLeaveAllocated;
-    private BigDecimal casualLeaveUsed;
-    private BigDecimal casualLeaveBalance;
+    // Casual + Sick combined pool
+    private BigDecimal casualSickAllocated;
+    private BigDecimal casualSickUsed;
+    private BigDecimal casualSickBalance;
+    private BigDecimal casualSickCarriedForward;
 
-    private BigDecimal sickLeaveAllocated;
-    private BigDecimal sickLeaveUsed;
-    private BigDecimal sickLeaveBalance;
-
+    // Paid / Earned leave
     private BigDecimal paidLeaveAllocated;
     private BigDecimal paidLeaveUsed;
     private BigDecimal paidLeaveBalance;
+    private BigDecimal paidLeaveCarriedForward;
 
-    private Integer wfhDaysAllocated;
-    private Integer wfhDaysUsed;
-    private Integer wfhDaysBalance;
-
+    // LOP is informational only — no allocation
     private BigDecimal lopDays;
 }

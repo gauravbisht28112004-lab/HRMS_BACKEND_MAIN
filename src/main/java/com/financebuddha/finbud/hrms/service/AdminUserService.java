@@ -1,9 +1,11 @@
 package com.financebuddha.finbud.hrms.service;
 
+import com.financebuddha.finbud.hrms.dto.auth.BulkPasswordResetResponse;
 import com.financebuddha.finbud.hrms.dto.auth.PasswordResetResponse;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserRolesRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserStatusRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UserAccountResponse;
+import com.financebuddha.finbud.hrms.dto.auth.UserLoginDebugResponse;
 
 /**
  * Admin / HR surface for managing login accounts already linked to
@@ -50,4 +52,27 @@ public interface AdminUserService {
      * counter so the user can actually log in with the new credentials.
      */
     PasswordResetResponse resetPassword(Long userId);
+
+    /**
+     * Diagnostic lookup: given a username that can't log in, figure out
+     * *why*. Returns a clear reason (account missing / inactive / locked /
+     * never-rotated-password) plus a suggested admin action. Never leaks
+     * the password hash. No-op safe if the username doesn't exist.
+     */
+    UserLoginDebugResponse debugLogin(String username);
+
+    /**
+     * Bulk-reset every user who has never logged in (passwordChangedAt IS
+     * NULL) back to the system default password. Also clears any failed
+     * login attempts and unlocks the account. Used to recover from
+     * provisioning runs where the original temp passwords were lost.
+     *
+     * <p>Safe by design — only touches users who never customised their
+     * password. Returns the number of users reset and the default password
+     * itself so the admin can broadcast it to the affected employees.
+     *
+     * <p>Admin only. HR cannot bulk-reset (they could accidentally include
+     * Admin/HR accounts which the per-user reset would normally protect).
+     */
+    BulkPasswordResetResponse bulkResetUntouchedAccounts();
 }

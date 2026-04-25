@@ -100,20 +100,37 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new BadRequestException("You have already punched in today.");
         }
 
+        // Admin / HR / Team Leader punches auto-approve — only Employee role
+        // punches sit in the approval queue. The TL queue is the only one that
+        // matters now: HR/Admin/TL self-punches go straight to APPROVED with
+        // the punching user themselves recorded as the approver for audit.
+        boolean autoApprove = hasAnyAuthority(principal, ROLE_ADMIN, ROLE_HR, ROLE_MANAGER);
+        AttendanceApprovalStatus initialStatus =
+                autoApprove ? AttendanceApprovalStatus.APPROVED : AttendanceApprovalStatus.PENDING;
+
         if (attendance == null) {
             attendance = Attendance.builder()
                     .employee(employee)
                     .attendanceDate(today)
                     .shiftType(effectiveShift)
-                    .approvalStatus(AttendanceApprovalStatus.PENDING)
+                    .approvalStatus(initialStatus)
                     .status(AttendanceStatus.PRESENT)
                     .build();
         } else {
             // Row exists (e.g. auto-absent from previous day rollup was wrong
-            // and HR cleared it). Promote it back to PENDING for approval.
-            attendance.setApprovalStatus(AttendanceApprovalStatus.PENDING);
+            // and HR cleared it). Reset approval state for the new punch.
+            attendance.setApprovalStatus(initialStatus);
             attendance.setStatus(AttendanceStatus.PRESENT);
             attendance.setIsAutoAbsent(false);
+            attendance.setRejectionReason(null);
+        }
+
+        if (autoApprove) {
+            attendance.setApprovedBy(employee);
+            attendance.setApprovedAt(now);
+        } else {
+            attendance.setApprovedBy(null);
+            attendance.setApprovedAt(null);
         }
 
         attendance.setPunchIn(now);
