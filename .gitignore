@@ -79,6 +79,10 @@ uploads/
 .env.local
 .env.*.local
 
+# Per-developer Spring Boot profile override — contains local DB password,
+# JWT secret, etc. Never commit. See .env.example for the list of vars.
+src/main/resources/application-local.properties
+
 # Test reports
 test-results/
 coverage/

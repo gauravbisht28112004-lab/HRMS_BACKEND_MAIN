@@ -25,6 +25,7 @@ import com.financebuddha.finbud.hrms.repository.AuditLogRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.LeaveBalanceRepository;
 import com.financebuddha.finbud.hrms.repository.LeaveRequestRepository;
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.service.LeaveService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +54,7 @@ public class LeaveServiceImpl implements LeaveService {
     private final LeaveMapper leaveMapper;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuthzService authz;
 
     @Override
     @Transactional
@@ -186,6 +188,7 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional(readOnly = true)
     public LeaveResponse getLeaveById(Long id) {
+        authz.requireOwnsLeaveOrPrivileged(id);
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest", "id", id));
         return leaveMapper.toResponse(leaveRequest);
@@ -194,6 +197,7 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<LeaveResponse> getLeavesByEmployee(Long employeeId, PaginationRequest paginationRequest) {
+        authz.requireOwnerOrPrivileged(employeeId);
         Pageable pageable = createPageable(paginationRequest);
         Page<LeaveRequest> leavePage = leaveRequestRepository.findByEmployeeId(employeeId, pageable);
 
@@ -243,6 +247,7 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional(readOnly = true)
     public LeaveBalanceResponse getLeaveBalance(Long employeeId, Integer year) {
+        authz.requireOwnerOrPrivileged(employeeId);
         LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndYear(employeeId, year)
                 .orElseGet(() -> initializeLeaveBalanceEntity(employeeId, year));
         return leaveMapper.toBalanceResponse(balance);

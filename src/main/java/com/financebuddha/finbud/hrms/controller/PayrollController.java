@@ -78,6 +78,7 @@ public class PayrollController {
     }
 
     @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     @Operation(summary = "Get employee payroll", description = "Get payroll history for employee")
     public ResponseEntity<ApiResponse<PagedResponse<PayrollResponse>>> getPayrollsByEmployee(
             @PathVariable Long employeeId,

@@ -23,7 +23,17 @@ public class UserPrincipal implements UserDetails {
     private Long id;
     private String username;
     private String email;
+
+    /** Business-facing employee code (e.g. "ND33004"). Used in URLs and UI. */
     private String employeeId;
+
+    /**
+     * Primary-key id of the linked Employee row, distinct from {@link #employeeId}.
+     * This is the value used by {@code @PathVariable Long employeeId} on most
+     * controller endpoints, so security expressions like
+     * {@code @authz.isOwner(#employeeId)} compare against this field.
+     */
+    private Long employeePrimaryId;
 
     @JsonIgnore
     private String password;
@@ -40,6 +50,7 @@ public class UserPrincipal implements UserDetails {
                 .username(user.getUsername())
                 .email(user.getEmployee() != null ? user.getEmployee().getEmail() : null)
                 .employeeId(user.getEmployee() != null ? user.getEmployee().getEmployeeId() : null)
+                .employeePrimaryId(user.getEmployee() != null ? user.getEmployee().getId() : null)
                 .password(user.getPasswordHash())
                 .authorities(authorities)
                 .build();

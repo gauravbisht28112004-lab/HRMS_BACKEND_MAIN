@@ -24,6 +24,7 @@ import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.LeaveRequestRepository;
 import com.financebuddha.finbud.hrms.repository.PublicHolidayRepository;
 import com.financebuddha.finbud.hrms.repository.ShiftAssignmentRepository;
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.security.UserPrincipal;
 import com.financebuddha.finbud.hrms.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +69,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final ShiftAssignmentRepository shiftAssignmentRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final PublicHolidayRepository publicHolidayRepository;
+    private final AuthzService authz;
 
     // =====================================================================
     // Portal punch flow
@@ -309,6 +311,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public AttendanceResponse getAttendanceById(Long id) {
+        authz.requireOwnsAttendanceOrPrivileged(id);
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance", "id", id));
         return attendanceMapper.toResponse(attendance);
@@ -317,6 +320,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public AttendanceResponse getAttendanceByEmployeeAndDate(Long employeeId, LocalDate date) {
+        authz.requireOwnerOrPrivileged(employeeId);
         Attendance attendance = attendanceRepository.findByEmployeeIdAndAttendanceDate(employeeId, date)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance", "date", date));
         return attendanceMapper.toResponse(attendance);
@@ -325,6 +329,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<AttendanceResponse> getAttendanceByEmployee(Long employeeId, PaginationRequest paginationRequest) {
+        authz.requireOwnerOrPrivileged(employeeId);
         Pageable pageable = createPageable(paginationRequest);
         Page<Attendance> page = attendanceRepository.findByEmployeeId(employeeId, pageable);
         return PagedResponse.of(
@@ -337,6 +342,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public List<AttendanceResponse> getAttendanceByEmployeeAndDateRange(Long employeeId, LocalDate startDate, LocalDate endDate) {
+        authz.requireOwnerOrPrivileged(employeeId);
         return attendanceMapper.toResponseList(
                 attendanceRepository.findByEmployeeIdAndAttendanceDateBetween(employeeId, startDate, endDate));
     }
@@ -362,6 +368,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public AttendanceSummaryResponse getAttendanceSummary(Long employeeId, int month, int year) {
+        authz.requireOwnerOrPrivileged(employeeId);
         LocalDate startOfMonth = LocalDate.of(year, month, 1);
         LocalDate endOfMonth = startOfMonth.with(TemporalAdjusters.lastDayOfMonth());
 
@@ -392,12 +399,14 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public boolean hasPunchedInToday(Long employeeId) {
+        authz.requireOwnerOrPrivileged(employeeId);
         return attendanceRepository.existsByEmployeeIdAndAttendanceDate(employeeId, LocalDate.now());
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean hasPunchedOutToday(Long employeeId) {
+        authz.requireOwnerOrPrivileged(employeeId);
         return attendanceRepository.findByEmployeeIdAndAttendanceDate(employeeId, LocalDate.now())
                 .map(a -> a.getPunchOut() != null)
                 .orElse(false);

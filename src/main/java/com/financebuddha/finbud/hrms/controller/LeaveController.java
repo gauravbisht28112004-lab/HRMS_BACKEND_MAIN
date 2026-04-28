@@ -76,6 +76,7 @@ public class LeaveController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.ownsLeave(#id)")
     @Operation(summary = "Get leave by ID", description = "Get leave request details by ID")
     public ResponseEntity<ApiResponse<LeaveResponse>> getLeaveById(@PathVariable Long id) {
         LeaveResponse response = leaveService.getLeaveById(id);
@@ -83,6 +84,7 @@ public class LeaveController {
     }
 
     @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Get employee leaves", description = "Get paginated leave history for an employee")
     public ResponseEntity<ApiResponse<PagedResponse<LeaveResponse>>> getLeavesByEmployee(
             @PathVariable Long employeeId,
@@ -120,6 +122,7 @@ public class LeaveController {
     }
 
     @GetMapping("/balance/{employeeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Get leave balance", description = "Get leave balance for employee")
     public ResponseEntity<ApiResponse<LeaveBalanceResponse>> getLeaveBalance(
             @PathVariable Long employeeId,

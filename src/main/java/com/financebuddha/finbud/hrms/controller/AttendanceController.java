@@ -97,12 +97,14 @@ public class AttendanceController {
     // ==================== Read / query APIs ====================
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.ownsAttendance(#id)")
     @Operation(summary = "Get attendance by id")
     public ResponseEntity<ApiResponse<AttendanceResponse>> getAttendanceById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(attendanceService.getAttendanceById(id)));
     }
 
     @GetMapping("/employee/{employeeId}/date/{date}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Get attendance for employee and date")
     public ResponseEntity<ApiResponse<AttendanceResponse>> getAttendanceByEmployeeAndDate(
             @PathVariable Long employeeId,
@@ -112,6 +114,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Paginated attendance for an employee")
     public ResponseEntity<ApiResponse<PagedResponse<AttendanceResponse>>> getAttendanceByEmployee(
             @PathVariable Long employeeId,
@@ -121,6 +124,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/employee/{employeeId}/range")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Attendance by date range")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceByEmployeeAndDateRange(
             @PathVariable Long employeeId,
@@ -157,6 +161,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/employee/{employeeId}/summary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Monthly attendance summary for an employee")
     public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> getAttendanceSummary(
             @PathVariable Long employeeId,
@@ -167,12 +172,14 @@ public class AttendanceController {
     }
 
     @GetMapping("/employee/{employeeId}/punched-in-today")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Has employee punched in today?")
     public ResponseEntity<ApiResponse<Boolean>> hasPunchedInToday(@PathVariable Long employeeId) {
         return ResponseEntity.ok(ApiResponse.success(attendanceService.hasPunchedInToday(employeeId)));
     }
 
     @GetMapping("/employee/{employeeId}/punched-out-today")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER') or @authz.isOwner(#employeeId)")
     @Operation(summary = "Has employee punched out today?")
     public ResponseEntity<ApiResponse<Boolean>> hasPunchedOutToday(@PathVariable Long employeeId) {
         return ResponseEntity.ok(ApiResponse.success(attendanceService.hasPunchedOutToday(employeeId)));

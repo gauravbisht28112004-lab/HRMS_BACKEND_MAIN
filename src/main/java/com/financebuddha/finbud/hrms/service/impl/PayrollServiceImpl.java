@@ -19,6 +19,7 @@ import com.financebuddha.finbud.hrms.repository.AttendanceRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.PayrollRepository;
 import com.financebuddha.finbud.hrms.repository.SalaryStructureRepository;
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.service.PayrollService;
 import com.financebuddha.finbud.hrms.service.SalaryCalculationService;
 import com.financebuddha.finbud.hrms.service.SalaryCalculationService.CtcCalculationInput;
@@ -56,6 +57,7 @@ public class PayrollServiceImpl implements PayrollService {
     private final SalaryCalculationService salaryCalculationService;
     private final SystemConfigService systemConfig;
     private final PayslipPdfGenerator payslipPdfGenerator;
+    private final AuthzService authz;
 
     // Default policy fallbacks when SystemConfig keys are missing. These
     // match the Flyway V5 seed values — update both in lockstep.
@@ -172,6 +174,7 @@ public class PayrollServiceImpl implements PayrollService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<PayrollResponse> getPayrollsByEmployee(Long employeeId, PaginationRequest paginationRequest) {
+        authz.requireOwnerOrPrivileged(employeeId);
         Pageable pageable = createPageable(paginationRequest);
         Page<Payroll> payrollPage = payrollRepository.findByEmployeeId(employeeId, pageable);
 
