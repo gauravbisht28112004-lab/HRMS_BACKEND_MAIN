@@ -8,6 +8,11 @@ COPY pom.xml .
 COPY .mvn .mvn
 COPY mvnw .
 
+# Ensure the Maven wrapper is executable. macOS / Windows commits sometimes
+# strip the +x bit, which causes "exit code 126" on Linux build hosts (Render,
+# CI, etc.). chmod here is idempotent and cheap.
+RUN chmod +x mvnw
+
 # Download dependencies (cached layer)
 RUN ./mvnw dependency:go-offline -B
 
