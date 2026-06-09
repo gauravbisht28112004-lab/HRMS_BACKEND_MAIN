@@ -86,6 +86,7 @@ src/main/resources/application-local.properties
 # Test reports
 test-results/
 coverage/
+.nyc_output/
 
 # Generated files
 *.generated.txt
@@ -95,4 +96,15 @@ coverage/
 
 # Ad-hoc API dry-run dumps
 dry-run.json
+
+# Misc
+*.bak
+*.tmp
+*.swp
+*.swo
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
 

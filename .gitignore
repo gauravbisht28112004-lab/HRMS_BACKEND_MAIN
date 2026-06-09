@@ -1,2 +1,85 @@
+# ── macOS ─────────────────────────────────────────────────
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Windows ───────────────────────────────────────────────
+Thumbs.db
+Thumbs.db:encdata
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ── Linux ─────────────────────────────────────────────────
+*~
+
+# ── IDE – IntelliJ / JetBrains ────────────────────────────
 .idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ── IDE – VS Code ─────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+
+# ── IDE – Eclipse ─────────────────────────────────────────
+.classpath
+.project
+.settings/
+
+# ── Java / Maven build output ─────────────────────────────
+target/
+*.class
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ── Node / Frontend build output ──────────────────────────
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.vite/
+*.tsbuildinfo
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Environment / secrets ─────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# ── Test / coverage artifacts ─────────────────────────────
+coverage/
+test-results/
+.nyc_output/
+
+# ── Runtime directories ───────────────────────────────────
+uploads/
+*.h2.db
+*.mv.db
+
+# ── Docker local state ────────────────────────────────────
+.docker/
+
+# ── Misc ──────────────────────────────────────────────────
+*.bak
+*.tmp
+*.swp
+*.swo
+.cache/
+
+# ── Stray lockfile at monorepo parent level ───────────────
+Frontend_HRMS_Main/package-lock.json
