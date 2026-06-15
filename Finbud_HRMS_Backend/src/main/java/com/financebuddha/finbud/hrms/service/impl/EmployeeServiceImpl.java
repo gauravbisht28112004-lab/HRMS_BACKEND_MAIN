@@ -143,10 +143,10 @@ public class EmployeeServiceImpl implements EmployeeService {
             return UserProvisioningResult.skipped("User already exists for this employee");
         }
 
-        String username = savedEmployee.getLoginUsername() != null
-                && !savedEmployee.getLoginUsername().isBlank()
-                ? savedEmployee.getLoginUsername().trim()
-                : savedEmployee.getEmployeeId().toLowerCase();
+        // Username is always the employee ID lowercased (e.g. ND260001 → nd260001)
+        // so the two are guaranteed to stay in sync. Any loginUsername supplied
+        // in the create request is ignored here — it will be overwritten below.
+        String username = savedEmployee.getEmployeeId().toLowerCase();
 
         if (userRepository.existsByUsername(username)) {
             log.warn("Username '{}' already taken — skipping auto-provision for employeeId={}. "
@@ -176,6 +176,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .build();
 
         userRepository.save(user);
+
+        // Keep employee.loginUsername in sync with the provisioned username
+        // so both columns always reflect the same value.
+        savedEmployee.setLoginUsername(username);
+        employeeRepository.save(savedEmployee);
         log.info("Auto-provisioned user '{}' for employeeId={} with ROLE_EMPLOYEE",
                 username, savedEmployee.getEmployeeId());
 
@@ -263,15 +268,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setStatus(EmployeeStatus.TERMINATED);
         employeeRepository.save(employee);
 
-        // Disable the linked User account so the person can no longer log in
-        if (employee.getUser() != null) {
-            User user = employee.getUser();
+        // Disable the linked User account so the person can no longer log in.
+        // Fetch via repository directly — avoids relying on the lazy-loaded
+        // inverse @OneToOne proxy on employee.getUser() which can be null
+        // even when a user row exists, causing a silent transaction rollback.
+        userRepository.findByEmployeeId(id).ifPresent(user -> {
             user.setIsActive(false);
             userRepository.save(user);
             log.info("User account disabled for terminated employee: {}", employee.getEmployeeId());
-        }
+        });
 
-        log.info("Employee marked as terminated: {}", id);
+        log.info("Employee soft-deleted (TERMINATED): {}", employee.getEmployeeId());
     }
 
     @Override
