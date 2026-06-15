@@ -259,9 +259,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", id));
 
-        // Soft delete by marking as terminated
+        // Soft delete: mark employee as terminated
         employee.setStatus(EmployeeStatus.TERMINATED);
         employeeRepository.save(employee);
+
+        // Disable the linked User account so the person can no longer log in
+        if (employee.getUser() != null) {
+            User user = employee.getUser();
+            user.setIsActive(false);
+            userRepository.save(user);
+            log.info("User account disabled for terminated employee: {}", employee.getEmployeeId());
+        }
 
         log.info("Employee marked as terminated: {}", id);
     }
@@ -294,7 +302,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional(readOnly = true)
     public PagedResponse<EmployeeResponse> getAllEmployees(PaginationRequest paginationRequest) {
         Pageable pageable = createPageable(paginationRequest);
-        Page<Employee> employeePage = employeeRepository.findAll(pageable);
+        // Exclude TERMINATED employees — they have been soft-deleted and should
+        // not appear in the default employee list.
+        Page<Employee> employeePage = employeeRepository.findByStatusNot(EmployeeStatus.TERMINATED, pageable);
 
         return PagedResponse.of(
                 employeeMapper.toResponseList(employeePage.getContent()),

@@ -36,6 +36,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     Page<Employee> findByStatus(EmployeeStatus status, Pageable pageable);
 
+    Page<Employee> findByStatusNot(EmployeeStatus status, Pageable pageable);
+
     /** Non-paginated variant used by bulk background jobs (e.g. yearly leave allocation). */
     List<Employee> findAllByStatus(EmployeeStatus status);
 
