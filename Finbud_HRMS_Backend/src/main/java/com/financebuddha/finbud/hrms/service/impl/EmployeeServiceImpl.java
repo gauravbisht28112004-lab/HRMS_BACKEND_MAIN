@@ -399,7 +399,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public String generateEmployeeId() {
         String year = LocalDate.now().format(DateTimeFormatter.ofPattern("yy"));
         long count = employeeRepository.count() + 1;
-        return "FBD" + year + String.format("%04d", count);
+        return "ND" + year + String.format("%04d", count);
     }
 
     @Override
