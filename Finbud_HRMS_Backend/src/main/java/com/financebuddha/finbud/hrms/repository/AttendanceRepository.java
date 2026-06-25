@@ -33,6 +33,33 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     @Query("SELECT a FROM Attendance a WHERE a.attendanceDate BETWEEN :startDate AND :endDate AND a.isOvertime = true")
     List<Attendance> findOvertimeByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
+    // ---------------------------------------------------------------------
+    // Reports dashboard exports — org-wide, date-range, optional department.
+    // ---------------------------------------------------------------------
+
+    /** All attendance rows in the window, optionally scoped to a department. */
+    @Query("""
+            SELECT a FROM Attendance a
+            WHERE a.attendanceDate BETWEEN :startDate AND :endDate
+              AND (:departmentId IS NULL OR a.employee.department.id = :departmentId)
+            ORDER BY a.attendanceDate DESC, a.employee.id ASC
+            """)
+    List<Attendance> findForReport(@Param("startDate") LocalDate startDate,
+                                   @Param("endDate") LocalDate endDate,
+                                   @Param("departmentId") Long departmentId);
+
+    /** Overtime-only rows in the window, optionally scoped to a department. */
+    @Query("""
+            SELECT a FROM Attendance a
+            WHERE a.attendanceDate BETWEEN :startDate AND :endDate
+              AND a.isOvertime = true
+              AND (:departmentId IS NULL OR a.employee.department.id = :departmentId)
+            ORDER BY a.attendanceDate DESC, a.employee.id ASC
+            """)
+    List<Attendance> findOvertimeForReport(@Param("startDate") LocalDate startDate,
+                                           @Param("endDate") LocalDate endDate,
+                                           @Param("departmentId") Long departmentId);
+
     @Query("SELECT COUNT(a) FROM Attendance a WHERE a.employee.id = :employeeId AND a.attendanceDate BETWEEN :startDate AND :endDate AND a.status = 'PRESENT'")
     Long countPresentDaysByEmployeeAndDateRange(@Param("employeeId") Long employeeId,
                                                 @Param("startDate") LocalDate startDate,

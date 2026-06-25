@@ -40,4 +40,20 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = 'PENDING' AND lr.startDate <= :date")
     List<LeaveRequest> findPendingLeavesPastStartDate(@Param("date") LocalDate date);
+
+    /**
+     * Leave requests overlapping the window for the Reports dashboard export.
+     * "Overlapping" = the leave's span intersects [startDate, endDate]. All
+     * statuses included so the export can show approval-rate patterns.
+     * Optional department filter via a nullable parameter.
+     */
+    @Query("""
+            SELECT lr FROM LeaveRequest lr
+            WHERE lr.startDate <= :endDate AND lr.endDate >= :startDate
+              AND (:departmentId IS NULL OR lr.employee.department.id = :departmentId)
+            ORDER BY lr.startDate DESC, lr.employee.id ASC
+            """)
+    List<LeaveRequest> findForReport(@Param("startDate") LocalDate startDate,
+                                     @Param("endDate") LocalDate endDate,
+                                     @Param("departmentId") Long departmentId);
 }

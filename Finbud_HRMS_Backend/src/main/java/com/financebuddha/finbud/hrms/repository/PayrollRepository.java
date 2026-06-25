@@ -38,4 +38,20 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
 
     @Query("SELECT SUM(p.totalDeductions) FROM Payroll p WHERE p.month = :month AND p.year = :year")
     Double sumTotalDeductionsByMonthAndYear(@Param("month") Integer month, @Param("year") Integer year);
+
+    /**
+     * Payroll rows for the Reports dashboard export. Payroll is keyed by
+     * (year, month), so the caller flattens the requested date window into a
+     * single ordinal {@code year * 12 + month} and we range-filter on that.
+     * Optional department filter via a nullable parameter.
+     */
+    @Query("""
+            SELECT p FROM Payroll p
+            WHERE (p.year * 12 + p.month) BETWEEN :startKey AND :endKey
+              AND (:departmentId IS NULL OR p.employee.department.id = :departmentId)
+            ORDER BY p.year DESC, p.month DESC, p.employee.id ASC
+            """)
+    List<Payroll> findForReport(@Param("startKey") int startKey,
+                                @Param("endKey") int endKey,
+                                @Param("departmentId") Long departmentId);
 }

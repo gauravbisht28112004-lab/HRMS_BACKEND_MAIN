@@ -478,6 +478,27 @@ export interface RegularizationPayload {
 const isNotFoundError = (err: unknown): boolean =>
   (err as { response?: { status?: number } } | undefined)?.response?.status === 404;
 
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/**
+ * Shared download helper for the admin Reports xlsx exports: GET the endpoint
+ * as an arraybuffer and wrap the bytes in a Blob. `departmentId` is sent only
+ * when defined — axios omits undefined query params automatically.
+ */
+const downloadReportXlsx = async (
+  path: string,
+  startDate: string,
+  endDate: string,
+  departmentId?: number,
+): Promise<Blob> => {
+  const response = await http.get(path, {
+    params: { startDate, endDate, departmentId },
+    responseType: 'arraybuffer',
+    headers: { Accept: XLSX_MIME },
+  });
+  return new Blob([response.data as ArrayBuffer], { type: XLSX_MIME });
+};
+
 export const api = {
   auth: {
     login: async (payload: LoginRequestPayload) =>
@@ -1258,6 +1279,22 @@ export const api = {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
     },
+  },
+  /**
+   * Admin Reports dashboard exports. Each call streams an .xlsx from the
+   * backend as an arraybuffer and wraps it in a Blob the caller turns into a
+   * download. `departmentId` is optional — omit (or pass undefined) for all
+   * departments; axios drops undefined query params automatically.
+   */
+  reports: {
+    attendanceXlsx: async (startDate: string, endDate: string, departmentId?: number): Promise<Blob> =>
+      downloadReportXlsx('/reports/attendance.xlsx', startDate, endDate, departmentId),
+    leaveXlsx: async (startDate: string, endDate: string, departmentId?: number): Promise<Blob> =>
+      downloadReportXlsx('/reports/leave.xlsx', startDate, endDate, departmentId),
+    payrollXlsx: async (startDate: string, endDate: string, departmentId?: number): Promise<Blob> =>
+      downloadReportXlsx('/reports/payroll.xlsx', startDate, endDate, departmentId),
+    overtimeXlsx: async (startDate: string, endDate: string, departmentId?: number): Promise<Blob> =>
+      downloadReportXlsx('/reports/overtime.xlsx', startDate, endDate, departmentId),
   },
   announcements: {
     /**
