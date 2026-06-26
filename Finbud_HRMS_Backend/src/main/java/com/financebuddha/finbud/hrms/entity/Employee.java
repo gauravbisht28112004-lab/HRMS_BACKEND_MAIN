@@ -9,6 +9,13 @@ import com.financebuddha.finbud.hrms.enums.EmploymentType;
 import com.financebuddha.finbud.hrms.enums.Gender;
 import com.financebuddha.finbud.hrms.enums.MaritalStatus;
 import com.financebuddha.finbud.hrms.enums.ProducerType;
+import com.financebuddha.finbud.hrms.converter.GenderConverter;
+import com.financebuddha.finbud.hrms.converter.MaritalStatusConverter;
+import com.financebuddha.finbud.hrms.converter.BloodGroupConverter;
+import com.financebuddha.finbud.hrms.converter.EmploymentTypeConverter;
+import com.financebuddha.finbud.hrms.converter.EmployeeCategoryConverter;
+import com.financebuddha.finbud.hrms.converter.ProducerTypeConverter;
+import com.financebuddha.finbud.hrms.converter.BackgroundCheckStatusConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -54,18 +61,18 @@ public class Employee extends BaseEntity {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = GenderConverter.class)
     @Column(name = "gender", length = 30)
     private Gender gender;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = MaritalStatusConverter.class)
     @Column(name = "marital_status", length = 20)
     private MaritalStatus maritalStatus;
 
     @Column(name = "marriage_date")
     private LocalDate marriageDate;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = BloodGroupConverter.class)
     @Column(name = "blood_group", length = 20)
     private BloodGroup bloodGroup;
 
@@ -150,19 +157,19 @@ public class Employee extends BaseEntity {
     @Builder.Default
     private List<Employee> subordinates = new ArrayList<>();
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = EmploymentTypeConverter.class)
     @Column(name = "employment_type", length = 20)
     @Builder.Default
     private EmploymentType employmentType = EmploymentType.FULL_TIME;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = EmployeeCategoryConverter.class)
     @Column(name = "employee_category", length = 30)
     private EmployeeCategory employeeCategory;
 
     @Column(name = "employee_series", length = 50)
     private String employeeSeries;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = ProducerTypeConverter.class)
     @Column(name = "producer_type", length = 30)
     private ProducerType producerType;
 
@@ -243,7 +250,7 @@ public class Employee extends BaseEntity {
     // Background verification
     // ------------------------------------------------------------------
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = BackgroundCheckStatusConverter.class)
     @Column(name = "background_check_status", length = 30)
     private BackgroundCheckStatus backgroundCheckStatus;
 
