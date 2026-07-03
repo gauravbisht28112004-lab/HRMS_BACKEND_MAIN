@@ -2,6 +2,7 @@ package com.financebuddha.finbud.hrms.service;
 
 import com.financebuddha.finbud.hrms.dto.auth.BulkPasswordResetResponse;
 import com.financebuddha.finbud.hrms.dto.auth.PasswordResetResponse;
+import com.financebuddha.finbud.hrms.dto.auth.ProvisionMissingUsersResponse;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserRolesRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserStatusRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UserAccountResponse;
@@ -75,4 +76,19 @@ public interface AdminUserService {
      * Admin/HR accounts which the per-user reset would normally protect).
      */
     BulkPasswordResetResponse bulkResetUntouchedAccounts();
+
+    /**
+     * Finds every active employee that has no User row and provisions a login
+     * account for each one, exactly as the Excel import flow does:
+     * <ul>
+     *     <li>Username = {@code employee.loginUsername} if set, otherwise
+     *         {@code employeeId.toLowerCase()} (e.g. {@code nd33447})</li>
+     *     <li>Password = {@code system_config.auth.default_password} (default: {@code finbud@123})</li>
+     *     <li>Role = {@code ROLE_EMPLOYEE}</li>
+     *     <li>{@code passwordChangedAt} left null → forces rotation on first login</li>
+     * </ul>
+     * Safe to call repeatedly — employees that already have a User account are skipped.
+     * Admin only.
+     */
+    ProvisionMissingUsersResponse provisionMissingUsers();
 }

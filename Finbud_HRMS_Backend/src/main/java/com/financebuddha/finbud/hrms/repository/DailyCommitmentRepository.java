@@ -94,4 +94,34 @@ public interface DailyCommitmentRepository extends JpaRepository<DailyCommitment
     BigDecimal sumApprovedDisbursalForEmployee(@Param("employeeId") Long employeeId,
                                                 @Param("startDate") LocalDate startDate,
                                                 @Param("endDate") LocalDate endDate);
+
+    /**
+     * ATL rollup: total <em>committed</em> (target, any status) disbursal per
+     * manager, grouped over a fixed set of manager ids — used for the
+     * HR/Admin "all ATLs" summary. Restricted to an explicit id list (rather
+     * than grouping over every manager in the table) so a MANAGER's team
+     * doesn't leak into an ATL-only report.
+     *
+     * <p>Uses {@code targetDisbursalAmount} rather than
+     * {@code actualDisbursalAmount} deliberately — this reflects what
+     * employees have <em>committed to</em>, independent of TL approval,
+     * matching how "commitment" is used elsewhere in this module.
+     */
+    @Query("""
+           SELECT c.employee.manager.id AS managerId, COALESCE(SUM(c.targetDisbursalAmount), 0) AS total
+             FROM DailyCommitment c
+            WHERE c.employee.manager.id IN :managerIds
+              AND c.workDate BETWEEN :startDate AND :endDate
+            GROUP BY c.employee.manager.id
+           """)
+    List<ManagerAggregateRow> aggregateTargetDisbursalByManagerIds(
+            @Param("managerIds") List<Long> managerIds,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /** Projection for the ATL rollup aggregate. */
+    interface ManagerAggregateRow {
+        Long getManagerId();
+        BigDecimal getTotal();
+    }
 }

@@ -4,6 +4,7 @@ import com.financebuddha.finbud.hrms.dto.auth.AdminCreateUserRequest;
 import com.financebuddha.finbud.hrms.dto.auth.BulkPasswordResetResponse;
 import com.financebuddha.finbud.hrms.dto.auth.LoginResponse;
 import com.financebuddha.finbud.hrms.dto.auth.PasswordResetResponse;
+import com.financebuddha.finbud.hrms.dto.auth.ProvisionMissingUsersResponse;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserRolesRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserStatusRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UserAccountResponse;
@@ -83,7 +84,7 @@ public class AdminUserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     @Operation(summary = "Update a user's roles",
                description = "Replaces the user's role set. HR callers may only grant or revoke "
-                           + "ROLE_EMPLOYEE / ROLE_MANAGER; attempting to touch ROLE_ADMIN or "
+                           + "ROLE_EMPLOYEE / ROLE_MANAGER / ROLE_ATL; attempting to touch ROLE_ADMIN or "
                            + "ROLE_HR from an HR session returns 403.")
     public ResponseEntity<ApiResponse<UserAccountResponse>> updateRoles(
             @PathVariable Long userId,
@@ -138,5 +139,21 @@ public class AdminUserController {
         BulkPasswordResetResponse response = adminUserService.bulkResetUntouchedAccounts();
         return ResponseEntity.ok(ApiResponse.success(
                 "Reset " + response.getResetCount() + " account(s) to default", response));
+    }
+
+    @PostMapping("/provision-missing")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Provision login accounts for all employees that don't have one",
+               description = "Scans for every active employee without a User row and creates a login account "
+                           + "for each one using the same rules as the Excel import: "
+                           + "username = loginUsername ?? employeeId.toLowerCase(), "
+                           + "password = system_config.auth.default_password, "
+                           + "role = ROLE_EMPLOYEE, passwordChangedAt = null (forces rotation on first login). "
+                           + "Safe to call repeatedly — already-provisioned employees are skipped. "
+                           + "Returns the list of usernames created and the default password so HR can broadcast credentials.")
+    public ResponseEntity<ApiResponse<ProvisionMissingUsersResponse>> provisionMissing() {
+        ProvisionMissingUsersResponse response = adminUserService.provisionMissingUsers();
+        return ResponseEntity.ok(ApiResponse.success(
+                "Provisioned " + response.getProvisionedCount() + " account(s)", response));
     }
 }

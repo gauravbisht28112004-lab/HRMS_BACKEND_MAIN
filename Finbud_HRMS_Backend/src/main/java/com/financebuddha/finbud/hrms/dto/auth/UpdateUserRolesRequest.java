@@ -17,9 +17,10 @@ import java.util.Set;
  *         exactly {@link #roles} (additions and removals as needed).</li>
  *     <li>At least one role is required; an account with zero roles would
  *         be unable to do anything useful.</li>
- *     <li>HR callers may only grant/revoke {@code ROLE_EMPLOYEE} and
- *         {@code ROLE_MANAGER}. Attempting to grant {@code ROLE_ADMIN} or
- *         {@code ROLE_HR} from an HR session returns 403.</li>
+ *     <li>HR callers may only grant/revoke {@code ROLE_EMPLOYEE},
+ *         {@code ROLE_MANAGER}, and {@code ROLE_ATL}. Attempting to grant
+ *         {@code ROLE_ADMIN} or {@code ROLE_HR} from an HR session returns
+ *         403.</li>
  * </ul>
  */
 @Data

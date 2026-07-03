@@ -2,6 +2,7 @@ package com.financebuddha.finbud.hrms.service.impl;
 
 import com.financebuddha.finbud.hrms.dto.auth.BulkPasswordResetResponse;
 import com.financebuddha.finbud.hrms.dto.auth.PasswordResetResponse;
+import com.financebuddha.finbud.hrms.dto.auth.ProvisionMissingUsersResponse;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserRolesRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UpdateUserStatusRequest;
 import com.financebuddha.finbud.hrms.dto.auth.UserAccountResponse;
@@ -54,7 +55,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     /** Roles HR alone may grant or revoke. Admin can touch anything. */
     private static final Set<RoleType> HR_ALLOWED_ROLES = EnumSet.of(
-            RoleType.ROLE_EMPLOYEE, RoleType.ROLE_MANAGER);
+            RoleType.ROLE_EMPLOYEE, RoleType.ROLE_MANAGER, RoleType.ROLE_ATL);
 
     /** Fallback when {@code system_config.auth.default_password} is unset. Kept in sync with V7 Flyway. */
     private static final String FALLBACK_DEFAULT_PASSWORD = "finbud@123";
@@ -379,6 +380,79 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .skippedCount(skipped)
                 .defaultPassword(defaultPassword)
                 .resetUsernames(reset)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public ProvisionMissingUsersResponse provisionMissingUsers() {
+        if (!currentCallerHasRole(RoleType.ROLE_ADMIN)) {
+            throw new ForbiddenException("Only Admin can provision missing user accounts");
+        }
+
+        String defaultPassword = systemConfig.getOrDefault(
+                SystemConfigService.Keys.AUTH_DEFAULT_PASSWORD, FALLBACK_DEFAULT_PASSWORD);
+        String passwordHash = passwordEncoder.encode(defaultPassword);
+
+        Role employeeRole = roleRepository.findByName(RoleType.ROLE_EMPLOYEE)
+                .orElseThrow(() -> new IllegalStateException("ROLE_EMPLOYEE missing — check Flyway seed data"));
+
+        List<Employee> unprovisioned = employeeRepository.findAllWithoutUserAccount();
+
+        List<String> provisioned = new ArrayList<>();
+        List<ProvisionMissingUsersResponse.FailureDetail> failures = new ArrayList<>();
+
+        for (Employee employee : unprovisioned) {
+            String username = (employee.getLoginUsername() != null && !employee.getLoginUsername().isBlank())
+                    ? employee.getLoginUsername().trim().toLowerCase()
+                    : employee.getEmployeeId().toLowerCase();
+
+            try {
+                if (userRepository.existsByUsername(username)) {
+                    failures.add(ProvisionMissingUsersResponse.FailureDetail.builder()
+                            .employeeId(employee.getEmployeeId())
+                            .reason("Username '" + username + "' already taken by another user")
+                            .build());
+                    log.warn("Skipped provisioning for {} — username '{}' already taken",
+                            employee.getEmployeeId(), username);
+                    continue;
+                }
+
+                Set<Role> roles = new HashSet<>();
+                roles.add(employeeRole);
+
+                User user = User.builder()
+                        .username(username)
+                        .passwordHash(passwordHash)
+                        .employee(employee)
+                        .isActive(Boolean.TRUE)
+                        .roles(roles)
+                        // passwordChangedAt intentionally null → forces rotation on first login
+                        .build();
+
+                userRepository.save(user);
+                provisioned.add(username);
+                log.info("Provisioned login '{}' for employee {}", username, employee.getEmployeeId());
+
+            } catch (Exception e) {
+                log.error("Failed to provision user for employee {}: {}", employee.getEmployeeId(), e.getMessage(), e);
+                failures.add(ProvisionMissingUsersResponse.FailureDetail.builder()
+                        .employeeId(employee.getEmployeeId())
+                        .reason(e.getMessage())
+                        .build());
+            }
+        }
+
+        log.info("provisionMissingUsers complete — provisioned={}, failed={}",
+                provisioned.size(), failures.size());
+
+        return ProvisionMissingUsersResponse.builder()
+                .provisionedCount(provisioned.size())
+                .alreadyProvisionedCount(0) // query only returns employees with no user row
+                .failedCount(failures.size())
+                .defaultPassword(defaultPassword)
+                .provisionedUsernames(provisioned)
+                .failures(failures)
                 .build();
     }
 

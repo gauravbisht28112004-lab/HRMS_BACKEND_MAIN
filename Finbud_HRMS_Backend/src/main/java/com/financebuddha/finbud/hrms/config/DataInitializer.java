@@ -27,7 +27,7 @@ import java.util.Set;
  * <p>
  * Responsibilities on every boot:
  * <ol>
- *   <li>Ensure all four RoleType rows exist (with default permission sets)</li>
+ *   <li>Ensure all RoleType rows exist (with default permission sets)</li>
  *   <li>Ensure the two Finbud bootstrap admin/HR accounts exist:
  *       <ul>
  *         <li>{@code ND33004} — AKASH DEEP → {@link RoleType#ROLE_ADMIN}</li>
@@ -216,6 +216,7 @@ public class DataInitializer implements CommandLineRunner {
             case ROLE_ADMIN -> "System administrator with full access";
             case ROLE_HR -> "Human resources manager";
             case ROLE_MANAGER -> "Team manager with department access";
+            case ROLE_ATL -> "Assistant Team Leader — views cumulative commitment for employees assigned under them";
             case ROLE_EMPLOYEE -> "Regular employee";
         };
     }
@@ -232,6 +233,9 @@ public class DataInitializer implements CommandLineRunner {
                 break;
             case ROLE_MANAGER:
                 permissions.addAll(Set.of("employee:read", "attendance:read", "leave:approve"));
+                break;
+            case ROLE_ATL:
+                permissions.addAll(Set.of("employee:read", "commitment:read"));
                 break;
             case ROLE_EMPLOYEE:
                 permissions.addAll(Set.of("employee:read", "attendance:read", "attendance:write",

@@ -125,6 +125,15 @@ public class SecurityConfig {
                 // ---------------- Reports ----------------
                 .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "HR", "MANAGER")
 
+                // ---------------- ATL dashboard ----------------
+                // Self-service ("my team's commitment") must precede the
+                // blanket /api/atl/** rule below — same first-match-wins
+                // reasoning as the avatar matchers above. Any authenticated
+                // user can hit /me/team-commitment; it's inherently scoped
+                // to their own employee id by the controller.
+                .requestMatchers("/api/atl/me/**").authenticated()
+                .requestMatchers("/api/atl/**").hasAnyRole("ADMIN", "HR", "ATL")
+
                 // ---------------- Manager + above ----------------
                 // C-5: the actual leave routes are /api/leaves/{id}/approve and
                 // /api/leaves/{id}/reject — the old "/api/leaves/approve/**"

@@ -70,4 +70,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     @Query("SELECT e FROM Employee e WHERE e.manager.id = :managerId AND e.status = 'ACTIVE'")
     List<Employee> findActiveSubordinates(@Param("managerId") Long managerId);
+
+    /**
+     * All active employees that have no linked User row yet.
+     * Used by the provision-missing endpoint to auto-create login accounts
+     * for employees added directly to the DB without going through the import flow.
+     */
+    @Query("SELECT e FROM Employee e WHERE e.status = 'ACTIVE' AND NOT EXISTS (SELECT u FROM User u WHERE u.employee = e)")
+    List<Employee> findAllWithoutUserAccount();
 }
