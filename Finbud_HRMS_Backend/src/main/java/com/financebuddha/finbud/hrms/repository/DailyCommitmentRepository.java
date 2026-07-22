@@ -119,6 +119,25 @@ public interface DailyCommitmentRepository extends JpaRepository<DailyCommitment
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
+    /**
+     * ATL rollup: total APPROVED <em>actual</em> disbursal per manager over a
+     * date window, grouped over an explicit manager-id list. Used by the
+     * HR/Admin ATL summary's "actual disbursed to date" column so progress
+     * against the assigned monthly target is visible at a glance.
+     */
+    @Query("""
+           SELECT c.employee.manager.id AS managerId, COALESCE(SUM(c.actualDisbursalAmount), 0) AS total
+             FROM DailyCommitment c
+            WHERE c.employee.manager.id IN :managerIds
+              AND c.workDate BETWEEN :startDate AND :endDate
+              AND c.status = com.financebuddha.finbud.hrms.enums.CommitmentStatus.APPROVED
+            GROUP BY c.employee.manager.id
+           """)
+    List<ManagerAggregateRow> aggregateApprovedActualByManagerIds(
+            @Param("managerIds") List<Long> managerIds,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
     /** Projection for the ATL rollup aggregate. */
     interface ManagerAggregateRow {
         Long getManagerId();

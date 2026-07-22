@@ -7,6 +7,7 @@ import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.entity.User;
 import com.financebuddha.finbud.hrms.enums.RoleType;
 import com.financebuddha.finbud.hrms.exception.ResourceNotFoundException;
+import com.financebuddha.finbud.hrms.repository.DailyCommitmentRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.MonthlyTargetRepository;
 import com.financebuddha.finbud.hrms.repository.UserRepository;
@@ -40,6 +41,7 @@ public class AtlDashboardServiceImpl implements AtlDashboardService {
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
     private final MonthlyTargetRepository monthlyTargetRepository;
+    private final DailyCommitmentRepository dailyCommitmentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -112,6 +114,14 @@ public class AtlDashboardServiceImpl implements AtlDashboardService {
                         MonthlyTargetRepository.ManagerTargetAggregateRow::getManagerId,
                         MonthlyTargetRepository.ManagerTargetAggregateRow::getTotal));
 
+        // Approved actual disbursal to date, per ATL, over the same window —
+        // lets HR/Admin track progress against the assigned target.
+        Map<Long, BigDecimal> actualsByAtl = dailyCommitmentRepository
+                .aggregateApprovedActualByManagerIds(atlIds, startDate, endDate).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        DailyCommitmentRepository.ManagerAggregateRow::getManagerId,
+                        DailyCommitmentRepository.ManagerAggregateRow::getTotal));
+
         return atls.stream()
                 .map(atl -> AtlSummaryEntryResponse.builder()
                         .atlId(atl.getId())
@@ -119,6 +129,7 @@ public class AtlDashboardServiceImpl implements AtlDashboardService {
                         .atlName(atl.getFullName())
                         .teamSize(employeeRepository.findActiveSubordinates(atl.getId()).size())
                         .totalTargetDisbursalAmount(totalsByAtl.getOrDefault(atl.getId(), BigDecimal.ZERO))
+                        .totalActualDisbursalAmount(actualsByAtl.getOrDefault(atl.getId(), BigDecimal.ZERO))
                         .build())
                 .sorted(Comparator.comparing(AtlSummaryEntryResponse::getTotalTargetDisbursalAmount).reversed())
                 .toList();

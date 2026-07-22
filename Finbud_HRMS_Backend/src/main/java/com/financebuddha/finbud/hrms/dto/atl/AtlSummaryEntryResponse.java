@@ -25,4 +25,7 @@ public class AtlSummaryEntryResponse {
     private Integer teamSize;
 
     private BigDecimal totalTargetDisbursalAmount;
+
+    /** Approved actual disbursal to date for this ATL's team in the window. */
+    private BigDecimal totalActualDisbursalAmount;
 }
