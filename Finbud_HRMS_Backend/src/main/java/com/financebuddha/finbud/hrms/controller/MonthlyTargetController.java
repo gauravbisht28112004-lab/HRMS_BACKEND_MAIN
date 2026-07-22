@@ -7,6 +7,7 @@ import com.financebuddha.finbud.hrms.entity.User;
 import com.financebuddha.finbud.hrms.exception.ForbiddenException;
 import com.financebuddha.finbud.hrms.exception.ResourceNotFoundException;
 import com.financebuddha.finbud.hrms.repository.UserRepository;
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.security.CurrentUser;
 import com.financebuddha.finbud.hrms.security.UserPrincipal;
 import com.financebuddha.finbud.hrms.service.MonthlyTargetService;
@@ -26,10 +27,10 @@ import java.util.List;
  *
  * <p>Authorisation:
  * <ul>
- *   <li>Set / upsert: TL/HR/Admin only.</li>
+ *   <li>Set / upsert: TL/HR/Admin, or an ATL for their own direct reports.</li>
  *   <li>Read-own ({@code /me}): any authenticated user — employees see
  *       their own target + achieved overlay.</li>
- *   <li>Team list: TL/HR/Admin.</li>
+ *   <li>Team list: TL/HR/Admin, or an ATL for their own team.</li>
  * </ul>
  */
 @RestController
@@ -41,11 +42,12 @@ public class MonthlyTargetController {
 
     private final MonthlyTargetService monthlyTargetService;
     private final UserRepository userRepository;
+    private final AuthzService authzService;
 
     @PutMapping("/{employeeId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'ATL')")
     @Operation(summary = "Set / update an employee's monthly target",
-               description = "TL/HR/Admin only. Same (employee, year, month) overwrites in place.")
+               description = "TL/HR/Admin for anyone; an ATL only for their own direct reports. Same (employee, year, month) overwrites in place.")
     public ResponseEntity<ApiResponse<MonthlyTargetResponse>> upsert(
             @CurrentUser UserPrincipal currentUser,
             @PathVariable Long employeeId,
@@ -76,12 +78,14 @@ public class MonthlyTargetController {
     }
 
     @GetMapping("/manager/{managerId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Team list", description = "Direct reports' monthly targets with achieved overlay.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'ATL')")
+    @Operation(summary = "Team list", description = "Direct reports' monthly targets with achieved overlay. An ATL may query only their own team.")
     public ResponseEntity<ApiResponse<List<MonthlyTargetResponse>>> listForManager(
             @PathVariable Long managerId,
             @RequestParam Integer year,
             @RequestParam Integer month) {
+        // ATL callers are restricted to their own team; ADMIN/HR/MANAGER unrestricted.
+        authzService.requireCanActAsManager(managerId);
         return ResponseEntity.ok(ApiResponse.success(
                 monthlyTargetService.listForManager(managerId, year, month)));
     }

@@ -8,6 +8,7 @@ import com.financebuddha.finbud.hrms.exception.ResourceNotFoundException;
 import com.financebuddha.finbud.hrms.repository.DailyCommitmentRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.MonthlyTargetRepository;
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.service.MonthlyTargetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class MonthlyTargetServiceImpl implements MonthlyTargetService {
     private final MonthlyTargetRepository monthlyTargetRepository;
     private final EmployeeRepository employeeRepository;
     private final DailyCommitmentRepository dailyCommitmentRepository;
+    private final AuthzService authzService;
 
     @Override
     @Transactional
@@ -36,6 +38,10 @@ public class MonthlyTargetServiceImpl implements MonthlyTargetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", employeeId));
         Employee setter = employeeRepository.findById(setterEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", setterEmployeeId));
+
+        // Defense-in-depth: an ATL may only assign targets to their own direct
+        // reports; ADMIN/HR/MANAGER are unrestricted.
+        authzService.requireCanManageEmployee(employee);
 
         MonthlyTarget target = monthlyTargetRepository
                 .findByEmployeeIdAndYearAndMonth(employeeId, request.getYear(), request.getMonth())

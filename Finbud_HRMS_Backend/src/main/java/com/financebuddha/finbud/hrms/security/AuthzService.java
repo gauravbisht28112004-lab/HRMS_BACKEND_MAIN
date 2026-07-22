@@ -1,5 +1,6 @@
 package com.financebuddha.finbud.hrms.security;
 
+import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.exception.ForbiddenException;
 import com.financebuddha.finbud.hrms.repository.AttendanceRepository;
 import com.financebuddha.finbud.hrms.repository.LeaveRequestRepository;
@@ -160,6 +161,59 @@ public class AuthzService {
         }
         throw new ForbiddenException(
                 "Not authorized to access leave request " + leaveRequestId);
+    }
+
+    // =====================================================================
+    // ATL team-scope guards
+    //
+    // An ATL (Assistant Team Leader) may only act on their own direct
+    // reports — the employees whose {@code manager} is the ATL. Privileged
+    // roles (ADMIN / HR / MANAGER) stay unrestricted, preserving existing
+    // behaviour. Callers holding none of these roles are refused outright.
+    // =====================================================================
+
+    /**
+     * Allow if the caller is ADMIN/HR/MANAGER (unrestricted), OR is an ATL
+     * who directly manages {@code employee}. Throws {@link ForbiddenException}
+     * otherwise. Used by the monthly-target and daily-commitment services so
+     * an ATL cannot assign a target to — or approve a commitment for — an
+     * employee outside their own team.
+     */
+    public void requireCanManageEmployee(Employee employee) {
+        if (hasAnyRole("ADMIN", "HR", "MANAGER")) {
+            return;
+        }
+        if (hasAnyRole("ATL")) {
+            UserPrincipal principal = currentPrincipal();
+            if (principal != null && principal.getEmployeePrimaryId() != null
+                    && employee != null && employee.getManager() != null
+                    && principal.getEmployeePrimaryId().equals(employee.getManager().getId())) {
+                return;
+            }
+            throw new ForbiddenException("An ATL can only manage employees in their own team");
+        }
+        throw new ForbiddenException("Not authorized to manage this employee");
+    }
+
+    /**
+     * For manager-id-scoped list endpoints (pending queue, team snapshot,
+     * team monthly targets): ADMIN/HR/MANAGER may query any manager's team;
+     * an ATL may query only their own — {@code managerId} equal to their
+     * employee primary-key id. Throws {@link ForbiddenException} otherwise.
+     */
+    public void requireCanActAsManager(Long managerId) {
+        if (hasAnyRole("ADMIN", "HR", "MANAGER")) {
+            return;
+        }
+        if (hasAnyRole("ATL")) {
+            UserPrincipal principal = currentPrincipal();
+            if (principal != null && managerId != null
+                    && managerId.equals(principal.getEmployeePrimaryId())) {
+                return;
+            }
+            throw new ForbiddenException("An ATL can only view their own team");
+        }
+        throw new ForbiddenException("Not authorized to view this team");
     }
 
     private UserPrincipal currentPrincipal() {

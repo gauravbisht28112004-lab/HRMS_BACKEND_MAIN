@@ -12,6 +12,7 @@ import com.financebuddha.finbud.hrms.exception.ForbiddenException;
 import com.financebuddha.finbud.hrms.exception.ResourceNotFoundException;
 import com.financebuddha.finbud.hrms.repository.DailyCommitmentRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.service.DailyCommitmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class DailyCommitmentServiceImpl implements DailyCommitmentService {
 
     private final DailyCommitmentRepository dailyCommitmentRepository;
     private final EmployeeRepository employeeRepository;
+    private final AuthzService authzService;
 
     @Override
     @Transactional
@@ -122,6 +124,10 @@ public class DailyCommitmentServiceImpl implements DailyCommitmentService {
     @Transactional
     public DailyCommitmentResponse review(Long commitmentId, Long reviewerEmployeeId, DailyCommitmentReviewRequest request) {
         DailyCommitment commitment = loadOrThrow(commitmentId);
+
+        // Defense-in-depth: an ATL may only review their own direct reports'
+        // rows; ADMIN/HR/MANAGER are unrestricted.
+        authzService.requireCanManageEmployee(commitment.getEmployee());
 
         if (commitment.getStatus() != CommitmentStatus.SUBMITTED) {
             throw new BadRequestException(

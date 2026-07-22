@@ -1,4 +1,4 @@
-export type UserRole = 'Admin' | 'HR' | 'Team Leader' | 'Employee';
+export type UserRole = 'Admin' | 'HR' | 'Team Leader' | 'ATL' | 'Employee';
 
 export interface NavItem {
   label: string;

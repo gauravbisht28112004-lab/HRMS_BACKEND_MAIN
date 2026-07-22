@@ -188,6 +188,74 @@ export const Sidebar = () => {
     );
   }
 
+  if (role === 'ATL') {
+    const atlItems = [
+      { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+      { label: 'My Team Commitment', path: '/atl-monthly-target', icon: Target },
+      { label: 'Team Approvals', path: '/atl-daily-commitment', icon: ClipboardList },
+      { label: 'Attendance', path: '/attendance', icon: CalendarDays },
+      { label: 'Regularizations', path: '/regularizations', icon: FileCheck2 },
+      { label: 'Leave', path: '/leave', icon: PlaneTakeoff },
+      { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
+    ];
+
+    return (
+      <aside className="hidden w-64 flex-col border-r border-slate-200 bg-[#fcfbf7] px-4 py-5 text-slate-700 lg:flex">
+        <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-900 text-white">
+            <Users size={22} />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-slate-900">FinBud</p>
+            <p className="text-xs text-slate-500">ATL Portal</p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-900 font-semibold text-white">
+              {getInitials(user.name)}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{user.name}</p>
+              <p className="text-xs text-slate-500">Assistant Team Leader</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="mt-5 flex flex-1 flex-col gap-1">
+          {atlItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={`${item.label}-${item.path}`}
+                to={item.path}
+                end={item.path === '/'}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition',
+                    isActive ? 'bg-brand-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100',
+                  )
+                }
+              >
+                <Icon size={16} />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <button
+          onClick={() => void logout()}
+          className="mt-4 flex items-center gap-3 rounded-xl border border-[#f3ddd1] bg-[#fff6f2] px-3 py-2.5 text-sm text-[#cf7e64] transition hover:bg-[#fff1ea]"
+        >
+          <LogOut size={16} />
+          Logout
+        </button>
+      </aside>
+    );
+  }
+
   const allowedItems = navItems.filter((item) => item.roles.includes(role));
 
   return (

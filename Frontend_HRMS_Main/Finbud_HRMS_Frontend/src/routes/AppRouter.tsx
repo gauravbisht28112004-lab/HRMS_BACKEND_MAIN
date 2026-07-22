@@ -56,6 +56,12 @@ const TeamLeaderMonthlyCommitmentPage = lazy(() =>
 const TeamLeaderReportsPage = lazy(() =>
   import('@/pages/TeamLeaderReportsPage').then((module) => ({ default: module.TeamLeaderReportsPage })),
 );
+const AtlMonthlyTargetPage = lazy(() =>
+  import('@/pages/AtlMonthlyTargetPage').then((module) => ({ default: module.AtlMonthlyTargetPage })),
+);
+const AtlTeamApprovalsPage = lazy(() =>
+  import('@/pages/AtlTeamApprovalsPage').then((module) => ({ default: module.AtlTeamApprovalsPage })),
+);
 
 export const AppRouter = () => (
   <Suspense fallback={<div className="p-6 text-sm text-slate-500">Loading workspace...</div>}>
@@ -68,7 +74,7 @@ export const AppRouter = () => (
       <Route
         element={
           <ProtectedRoute
-            roles={['Admin', 'HR', 'Team Leader', 'Employee']}
+            roles={['Admin', 'HR', 'Team Leader', 'ATL', 'Employee']}
             allowWhileMustChangePassword
           />
         }
@@ -76,7 +82,7 @@ export const AppRouter = () => (
         <Route path="/force-change-password" element={<ForceChangePasswordPage />} />
       </Route>
 
-      <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Team Leader', 'Employee']} />}>
+      <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Team Leader', 'ATL', 'Employee']} />}>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="/my-profile" element={<EmployeeProfilePage />} />
@@ -86,7 +92,7 @@ export const AppRouter = () => (
             <Route path="/employees/:employeeId" element={<EmployeeProfilePage />} />
           </Route>
 
-          <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Team Leader', 'Employee']} />}>
+          <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Team Leader', 'ATL', 'Employee']} />}>
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/regularizations" element={<RegularizationsPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
@@ -116,6 +122,11 @@ export const AppRouter = () => (
             <Route path="/team-monthly-commitment" element={<TeamLeaderMonthlyCommitmentPage />} />
             <Route path="/team-payroll" element={<TeamLeaderPayrollPage />} />
             <Route path="/team-reports" element={<TeamLeaderReportsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute roles={['ATL']} />}>
+            <Route path="/atl-monthly-target" element={<AtlMonthlyTargetPage />} />
+            <Route path="/atl-daily-commitment" element={<AtlTeamApprovalsPage />} />
           </Route>
         </Route>
       </Route>

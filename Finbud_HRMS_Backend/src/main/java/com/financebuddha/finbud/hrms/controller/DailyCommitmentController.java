@@ -9,6 +9,7 @@ import com.financebuddha.finbud.hrms.entity.User;
 import com.financebuddha.finbud.hrms.exception.ForbiddenException;
 import com.financebuddha.finbud.hrms.exception.ResourceNotFoundException;
 import com.financebuddha.finbud.hrms.repository.UserRepository;
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.security.CurrentUser;
 import com.financebuddha.finbud.hrms.security.UserPrincipal;
 import com.financebuddha.finbud.hrms.service.DailyCommitmentService;
@@ -46,6 +47,7 @@ public class DailyCommitmentController {
 
     private final DailyCommitmentService dailyCommitmentService;
     private final UserRepository userRepository;
+    private final AuthzService authzService;
 
     @PostMapping
     @Operation(summary = "Create today's commitment", description = "Employee creates a DRAFT commitment with their day's targets.")
@@ -79,9 +81,9 @@ public class DailyCommitmentController {
     }
 
     @PostMapping("/{commitmentId}/review")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'ATL')")
     @Operation(summary = "Approve or reject a submitted commitment",
-               description = "TL/HR/Admin reviews. Rejection requires a reason so the employee can revise.")
+               description = "TL/HR/Admin reviews any team; an ATL only their own direct reports. Rejection requires a reason so the employee can revise.")
     public ResponseEntity<ApiResponse<DailyCommitmentResponse>> review(
             @CurrentUser UserPrincipal currentUser,
             @PathVariable Long commitmentId,
@@ -128,20 +130,22 @@ public class DailyCommitmentController {
     }
 
     @GetMapping("/manager/{managerId}/pending")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Pending-approval queue for a manager")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'ATL')")
+    @Operation(summary = "Pending-approval queue for a manager (ATLs: own team only)")
     public ResponseEntity<ApiResponse<List<DailyCommitmentResponse>>> listPendingForManager(
             @PathVariable Long managerId) {
+        authzService.requireCanActAsManager(managerId);
         return ResponseEntity.ok(ApiResponse.success(
                 dailyCommitmentService.listPendingForManager(managerId)));
     }
 
     @GetMapping("/manager/{managerId}/team")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Team snapshot for a date")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'ATL')")
+    @Operation(summary = "Team snapshot for a date (ATLs: own team only)")
     public ResponseEntity<ApiResponse<List<DailyCommitmentResponse>>> listTeamForDate(
             @PathVariable Long managerId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        authzService.requireCanActAsManager(managerId);
         return ResponseEntity.ok(ApiResponse.success(
                 dailyCommitmentService.listTeamForDate(managerId, date)));
     }

@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/store/authStore';
-import { AdminDashboard, EmployeeDashboard, HRDashboard, TeamLeaderDashboard } from '@/features/dashboard/components';
+import { AdminDashboard, AtlDashboard, EmployeeDashboard, HRDashboard, TeamLeaderDashboard } from '@/features/dashboard/components';
 
 export const DashboardPage = () => {
   const role = useAuthStore((state) => state.user?.role);
@@ -7,5 +7,6 @@ export const DashboardPage = () => {
   if (role === 'Admin') return <AdminDashboard />;
   if (role === 'HR') return <HRDashboard />;
   if (role === 'Team Leader') return <TeamLeaderDashboard />;
+  if (role === 'ATL') return <AtlDashboard />;
   return <EmployeeDashboard />;
 };
