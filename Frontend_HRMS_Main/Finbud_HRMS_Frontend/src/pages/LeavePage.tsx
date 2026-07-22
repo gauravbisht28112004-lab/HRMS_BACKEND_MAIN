@@ -10,12 +10,39 @@ import { LeaveCalendar } from '@/features/leave/components/LeaveCalendar';
 import { api } from '@/services/api';
 import { mapLeaveFormToRequest } from '@/services/requestMappers';
 import { useAuthStore } from '@/store/authStore';
+import { cn } from '@/utils/cn';
 import type { LeaveRequest } from '@/types';
+
+// Must stay in sync with the backend enum
+// com.financebuddha.finbud.hrms.enums.LeaveType (CASUAL, SICK, PAID, LOP).
+// `value` is exactly what we POST to /leaves/apply — any string outside this
+// set fails Jackson enum binding and the backend rejects it with HTTP 400,
+// which is what used to make the form "never submit".
+const LEAVE_TYPE_OPTIONS = [
+  { value: 'CASUAL', label: 'Casual', hint: 'Casual leave' },
+  { value: 'PAID', label: 'Paid', hint: 'Earned / privilege leave' },
+  { value: 'SICK', label: 'Sick', hint: 'Sick leave' },
+  { value: 'LOP', label: 'LOP', hint: 'Loss of pay (unpaid)' },
+] as const;
+
+const emptyForm = { leaveType: '', from: '', to: '', reason: '', contactDuringLeave: '' };
+
+// Client-side guard so we never send a request the backend is guaranteed to
+// reject (empty enum, empty dates, blank reason, reversed date range).
+const validateLeaveForm = (form: typeof emptyForm): string | null => {
+  if (!form.leaveType) return 'Please select a leave type.';
+  if (!form.from) return 'Please choose a start date.';
+  if (!form.to) return 'Please choose an end date.';
+  if (form.to < form.from) return 'The "To" date cannot be earlier than the "From" date.';
+  if (!form.reason.trim()) return 'Please enter a reason for your leave.';
+  return null;
+};
 
 export const LeavePage = () => {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ leaveType: '', from: '', to: '', reason: '', contactDuringLeave: '' });
+  const [form, setForm] = useState(emptyForm);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const canApproveLeave = user?.role === 'Admin' || user?.role === 'HR' || user?.role === 'Team Leader';
 
   const { data = [] } = useQuery<LeaveRequest[]>({
@@ -43,8 +70,18 @@ export const LeavePage = () => {
   const applyLeaveMutation = useMutation({
     mutationFn: () => api.leave.apply(mapLeaveFormToRequest(form)),
     onSuccess: async () => {
-      setForm({ leaveType: '', from: '', to: '', reason: '', contactDuringLeave: '' });
+      setForm(emptyForm);
+      setNotice({ type: 'success', text: 'Leave request submitted successfully.' });
       await queryClient.invalidateQueries({ queryKey: ['leave'] });
+    },
+    onError: (error) => {
+      // Previously there was no onError, so a rejected request (HTTP 400/500)
+      // vanished silently and the form looked like it did nothing. Surface the
+      // backend's own message instead.
+      setNotice({
+        type: 'error',
+        text: (error as Error)?.message ?? 'Could not submit your leave request. Please try again.',
+      });
     },
   });
 
@@ -63,9 +100,23 @@ export const LeavePage = () => {
     },
   });
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    await applyLeaveMutation.mutateAsync();
+    const validationError = validateLeaveForm(form);
+    if (validationError) {
+      setNotice({ type: 'error', text: validationError });
+      return;
+    }
+    setNotice(null);
+    applyLeaveMutation.mutate();
+  };
+
+  // Single-select: picking an option replaces any previous choice, and
+  // clicking the selected one clears it — so only one leave type can ever
+  // be checked at a time.
+  const selectLeaveType = (value: string) => {
+    setNotice(null);
+    setForm((prev) => ({ ...prev, leaveType: prev.leaveType === value ? '' : value }));
   };
 
   return (
@@ -76,7 +127,37 @@ export const LeavePage = () => {
         <Card>
           <h3 className="text-lg font-semibold text-slate-900">Apply Leave</h3>
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-            <Input label="Leave Type" value={form.leaveType} onChange={(e) => setForm({ ...form, leaveType: e.target.value })} />
+            <div className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <span>Leave Type</span>
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Leave type">
+                {LEAVE_TYPE_OPTIONS.map((option) => {
+                  const checked = form.leaveType === option.value;
+                  return (
+                    <label
+                      key={option.value}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition',
+                        checked
+                          ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-100'
+                          : 'border-slate-200 bg-white hover:border-brand-300',
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        name="leaveType"
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300"
+                        checked={checked}
+                        onChange={() => selectLeaveType(option.value)}
+                      />
+                      <span className="flex flex-col">
+                        <span className="font-semibold text-slate-800">{option.label}</span>
+                        <span className="text-xs font-normal text-slate-500">{option.hint}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
             <Input label="From" type="date" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />
             <Input label="To" type="date" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
             <Input
@@ -94,8 +175,21 @@ export const LeavePage = () => {
               />
             </label>
             <div className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-800">
-              Leave Balance: Casual 8 days • Sick 5 days • Privilege 12 days
+              Casual &amp; Sick share one balance • Paid is a separate balance • LOP is unpaid (loss of pay).
             </div>
+            {notice ? (
+              <div
+                role="alert"
+                className={cn(
+                  'rounded-xl border px-4 py-3 text-sm',
+                  notice.type === 'success'
+                    ? 'border-brand-200 bg-brand-50 text-brand-800'
+                    : 'border-rose-200 bg-rose-50 text-rose-700',
+                )}
+              >
+                {notice.text}
+              </div>
+            ) : null}
             <Button type="submit" disabled={applyLeaveMutation.isPending}>
               {applyLeaveMutation.isPending ? 'Submitting...' : 'Submit Request'}
             </Button>
