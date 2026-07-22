@@ -111,12 +111,13 @@ export const LeavePage = () => {
     applyLeaveMutation.mutate();
   };
 
-  // Single-select: picking an option replaces any previous choice, and
-  // clicking the selected one clears it — so only one leave type can ever
-  // be checked at a time.
+  // Native single-select semantics via a radio group: exactly one leave
+  // type can ever be selected, and picking an option replaces the previous
+  // choice. Unlike the old checkbox group, a radio cannot be toggled off by
+  // re-clicking — which is fine because a leave type is required anyway.
   const selectLeaveType = (value: string) => {
     setNotice(null);
-    setForm((prev) => ({ ...prev, leaveType: prev.leaveType === value ? '' : value }));
+    setForm((prev) => ({ ...prev, leaveType: value }));
   };
 
   return (
@@ -129,7 +130,7 @@ export const LeavePage = () => {
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <div className="flex flex-col gap-2 text-sm font-medium text-slate-700">
               <span>Leave Type</span>
-              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Leave type">
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Leave type">
                 {LEAVE_TYPE_OPTIONS.map((option) => {
                   const checked = form.leaveType === option.value;
                   return (
@@ -143,9 +144,10 @@ export const LeavePage = () => {
                       )}
                     >
                       <input
-                        type="checkbox"
+                        type="radio"
                         name="leaveType"
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300"
+                        value={option.value}
+                        className="mt-0.5 h-4 w-4 rounded-full border-slate-300 text-brand-600 focus:ring-brand-300"
                         checked={checked}
                         onChange={() => selectLeaveType(option.value)}
                       />
