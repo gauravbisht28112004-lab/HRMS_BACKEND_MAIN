@@ -170,10 +170,19 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        List<String> origins = Arrays.stream(corsAllowedOrigins.split(","))
+        List<String> origins = new java.util.ArrayList<>(Arrays.stream(corsAllowedOrigins.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
-                .toList();
+                .toList());
+
+        // Always allow the production frontend (Vercel), regardless of the
+        // APP_CORS_ALLOWED_ORIGINS env value. A missing or out-of-date env var
+        // must not silently block the live site with a CORS failure.
+        for (String required : List.of("https://hrms-frontend-main-three.vercel.app")) {
+            if (!origins.contains(required)) {
+                origins.add(required);
+            }
+        }
 
         if (origins.isEmpty()) {
             // Fail-safe so a misconfigured env doesn't accidentally allow everything.
