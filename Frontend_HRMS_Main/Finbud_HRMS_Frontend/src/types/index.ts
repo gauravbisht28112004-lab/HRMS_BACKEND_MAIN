@@ -1,10 +1,47 @@
-export type UserRole = 'Admin' | 'HR' | 'Team Leader' | 'ATL' | 'Employee';
+export type UserRole = 'Admin' | 'HR' | 'Manager' | 'Team Leader' | 'ATL' | 'Employee';
 
 export interface NavItem {
   label: string;
   path: string;
   roles: UserRole[];
   icon: string;
+}
+
+/** One direct-report row on a hierarchy target dashboard. */
+export interface HierarchyReportRow {
+  employeeId: number;
+  employeeCode: string;
+  employeeName: string;
+  /** Target this report was assigned by the dashboard owner (0 if none). */
+  assignedTargetDisbursalAmount: number;
+  /** This report's whole-team approved disbursal for the period. */
+  teamDisbursedToDate: number;
+  achievedPercent: number;
+}
+
+/**
+ * A single level's target-flow dashboard (Admin -> Manager -> Team Leader ->
+ * ATL -> Employee). Mirrors HierarchyDashboardResponse on the backend.
+ */
+export interface HierarchyDashboard {
+  employeeId: number;
+  employeeCode: string;
+  employeeName: string;
+  roleLabel: string;
+  year: number;
+  month: number;
+  /** Target handed down to me by the level above (0 if none set yet). */
+  myTargetDisbursalAmount: number;
+  /** My whole downstream team's approved disbursal for the period. */
+  teamDisbursedToDate: number;
+  teamAchievedPercent: number;
+  /** Sum of targets I've assigned across my direct reports. */
+  allocatedToReports: number;
+  /** myTarget - allocatedToReports (negative = over-allocated). */
+  unallocatedRemaining: number;
+  /** Label for the report rows: "Manager" / "Team Leader" / "ATL" / "Employee". */
+  reportsRoleLabel: string;
+  reports: HierarchyReportRow[];
 }
 
 export type EmploymentTypeLabel = 'Full Time' | 'Part Time' | 'Contract' | 'Intern' | 'Probation';

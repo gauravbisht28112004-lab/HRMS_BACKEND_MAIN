@@ -43,7 +43,7 @@ export const LeavePage = () => {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const canApproveLeave = user?.role === 'Admin' || user?.role === 'HR' || user?.role === 'Team Leader';
+  const canApproveLeave = user?.role === 'Admin' || user?.role === 'HR' || user?.role === 'Manager';
 
   const { data = [] } = useQuery<LeaveRequest[]>({
     queryKey: ['leave', user?.role, user?.employeeDbId],
@@ -56,7 +56,7 @@ export const LeavePage = () => {
         return api.leave.listForEmployee(user.employeeDbId);
       }
 
-      if (user.role === 'Team Leader' && user.employeeDbId) {
+      if (user.role === 'Manager' && user.employeeDbId) {
         return api.leave.listForManager(user.employeeDbId);
       }
 

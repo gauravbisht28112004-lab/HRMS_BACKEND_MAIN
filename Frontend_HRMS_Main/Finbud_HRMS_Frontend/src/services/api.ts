@@ -4,6 +4,8 @@ import type {
   Employee,
   Announcement,
   DailyCommitment,
+  HierarchyDashboard,
+  HierarchyReportRow,
   HourlyUpdate,
   LeaderboardEntry,
   LeaveBalance,
@@ -1229,6 +1231,23 @@ export const api = {
         return response.map(toMonthlyTarget);
       },
     },
+  },
+  hierarchy: {
+    /**
+     * My own target-flow dashboard: my target (from the level above), my whole
+     * team's disbursal, and a breakdown of my DIRECT reports. The server picks
+     * the right layer from my role (Admin->Managers, Manager->TLs, TL->ATLs,
+     * ATL->Employees). Field names are already camelCase JSON — consumed as-is.
+     */
+    myDashboard: async (year: number, month: number): Promise<HierarchyDashboard> =>
+      unwrapResponse<HierarchyDashboard>(
+        await http.get('/hierarchy/dashboard/me', { params: { year, month } }),
+      ),
+    /** Admin/HR: flat list of every active employee with target + own disbursal. */
+    allEmployees: async (year: number, month: number): Promise<HierarchyReportRow[]> =>
+      unwrapResponse<HierarchyReportRow[]>(
+        await http.get('/hierarchy/all-employees', { params: { year, month } }),
+      ),
   },
   leaderboard: {
     /**

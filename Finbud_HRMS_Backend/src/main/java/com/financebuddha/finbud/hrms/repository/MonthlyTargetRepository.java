@@ -15,6 +15,10 @@ public interface MonthlyTargetRepository extends JpaRepository<MonthlyTarget, Lo
 
     Optional<MonthlyTarget> findByEmployeeIdAndYearAndMonth(Long employeeId, Integer year, Integer month);
 
+    /** Batch target lookup for a set of employees in one period — used by the
+     *  hierarchy dashboard to fetch every direct report's target in one query. */
+    List<MonthlyTarget> findByEmployeeIdInAndYearAndMonth(List<Long> employeeIds, Integer year, Integer month);
+
     /** All targets a TL has set / inherited for their direct reports for a period. */
     @Query("""
            SELECT t FROM MonthlyTarget t
