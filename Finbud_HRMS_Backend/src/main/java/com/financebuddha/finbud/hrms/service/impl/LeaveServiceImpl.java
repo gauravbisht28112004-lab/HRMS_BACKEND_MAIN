@@ -64,6 +64,18 @@ public class LeaveServiceImpl implements LeaveService {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "id", employeeId));
 
+        // Ensure a leave-balance row exists for the current year BEFORE the
+        // balance check below. The read path (getLeaveBalance) lazily creates
+        // a missing row at the default 6+6 allocation via orElseGet, but the
+        // apply path historically did not — so a brand-new employee whose
+        // balance had never been viewed hit hasEnoughBalance()==false and got
+        // a misleading "Insufficient leave balance" 400, making it look like
+        // the form "never submits". Auto-initialise here to stay consistent.
+        Integer currentYear = LocalDateTime.now().getYear();
+        if (leaveBalanceRepository.findByEmployeeIdAndYear(employeeId, currentYear).isEmpty()) {
+            initializeLeaveBalanceEntity(employeeId, currentYear);
+        }
+
         // Calculate days requested
         BigDecimal daysRequested;
         if (Boolean.TRUE.equals(request.getIsHalfDay())) {
@@ -245,7 +257,7 @@ public class LeaveServiceImpl implements LeaveService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional // NOT readOnly: lazily inserts a default balance row on first read
     public LeaveBalanceResponse getLeaveBalance(Long employeeId, Integer year) {
         authz.requireOwnerOrPrivileged(employeeId);
         LeaveBalance balance = leaveBalanceRepository.findByEmployeeIdAndYear(employeeId, year)
