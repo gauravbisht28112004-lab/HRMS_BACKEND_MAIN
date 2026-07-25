@@ -174,7 +174,8 @@ public interface DailyCommitmentRepository extends JpaRepository<DailyCommitment
                  JOIN tree t ON c.manager_id = t.emp_id
            )
            SELECT t.branch_id AS "branchId",
-                  COALESCE(SUM(dc.actual_disbursal_amount), 0) AS "total"
+                  COALESCE(SUM(dc.actual_disbursal_amount), 0) AS "total",
+                  CAST(COUNT(DISTINCT t.emp_id) - 1 AS INTEGER) AS "teamSize"
              FROM tree t
              LEFT JOIN daily_commitments dc
                     ON dc.employee_id = t.emp_id
@@ -191,5 +192,6 @@ public interface DailyCommitmentRepository extends JpaRepository<DailyCommitment
     interface BranchDisbursalRow {
         Long getBranchId();
         BigDecimal getTotal();
+        Integer getTeamSize();
     }
 }

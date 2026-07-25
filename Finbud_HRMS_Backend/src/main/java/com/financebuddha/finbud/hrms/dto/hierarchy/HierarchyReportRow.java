@@ -33,6 +33,9 @@ public class HierarchyReportRow {
     /** This report's whole-team approved actual disbursal for the period. */
     private BigDecimal teamDisbursedToDate;
 
+    /** Number of people in this report's downstream team (subtree size). */
+    private Integer teamSize;
+
     /** teamDisbursedToDate / assignedTargetDisbursalAmount, capped at 100 (0 if no target). */
     private Integer achievedPercent;
 }

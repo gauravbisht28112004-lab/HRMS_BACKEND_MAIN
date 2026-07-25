@@ -54,7 +54,15 @@ public class HierarchyDashboardServiceImpl implements HierarchyDashboardService 
         // Batch-load the reports' assigned targets and whole-team disbursal.
         List<Long> reportIds = reports.stream().map(Employee::getId).toList();
         Map<Long, BigDecimal> reportTargets = targetsFor(reportIds, year, month);
-        Map<Long, BigDecimal> reportDisbursed = subtreeDisbursed(reportIds, start, end);
+        Map<Long, BigDecimal> reportDisbursed = new LinkedHashMap<>();
+        Map<Long, Integer> reportTeamSize = new LinkedHashMap<>();
+        if (!reportIds.isEmpty()) {
+            for (DailyCommitmentRepository.BranchDisbursalRow bRow
+                    : dailyCommitmentRepository.aggregateSubtreeDisbursalByBranch(reportIds, start, end)) {
+                reportDisbursed.put(bRow.getBranchId(), nz(bRow.getTotal()));
+                reportTeamSize.put(bRow.getBranchId(), bRow.getTeamSize() != null ? bRow.getTeamSize() : 0);
+            }
+        }
 
         List<HierarchyReportRow> rows = new ArrayList<>();
         BigDecimal teamDisbursed = BigDecimal.ZERO;
@@ -70,6 +78,7 @@ public class HierarchyDashboardServiceImpl implements HierarchyDashboardService 
                     .employeeName(r.getFullName())
                     .assignedTargetDisbursalAmount(rTarget)
                     .teamDisbursedToDate(rDisbursed)
+                    .teamSize(reportTeamSize.getOrDefault(r.getId(), 0))
                     .achievedPercent(percent(rDisbursed, rTarget))
                     .build());
         }
@@ -165,16 +174,6 @@ public class HierarchyDashboardServiceImpl implements HierarchyDashboardService 
         return map;
     }
 
-    /** Per-branch whole-subtree approved disbursal; empty when no reports. */
-    private Map<Long, BigDecimal> subtreeDisbursed(List<Long> branchRootIds, LocalDate start, LocalDate end) {
-        Map<Long, BigDecimal> map = new LinkedHashMap<>();
-        if (branchRootIds == null || branchRootIds.isEmpty()) {
-            return map;
-        }
-        dailyCommitmentRepository.aggregateSubtreeDisbursalByBranch(branchRootIds, start, end)
-                .forEach(row -> map.put(row.getBranchId(), nz(row.getTotal())));
-        return map;
-    }
 
     private BigDecimal targetFor(Long employeeId, Integer year, Integer month) {
         return monthlyTargetRepository.findByEmployeeIdAndYearAndMonth(employeeId, year, month)
