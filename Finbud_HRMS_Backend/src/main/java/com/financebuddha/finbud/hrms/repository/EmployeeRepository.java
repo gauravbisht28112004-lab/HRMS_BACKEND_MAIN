@@ -45,6 +45,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     Page<Employee> findByManagerId(Long managerId, Pageable pageable);
 
+    Page<Employee> findByManagerIdAndStatus(Long managerId, EmployeeStatus status, Pageable pageable);
+
     Page<Employee> findByShiftTypeId(Long shiftTypeId, Pageable pageable);
 
     @Query("SELECT e FROM Employee e WHERE " +
