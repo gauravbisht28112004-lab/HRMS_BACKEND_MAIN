@@ -309,9 +309,11 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional(readOnly = true)
     public PagedResponse<EmployeeResponse> getAllEmployees(PaginationRequest paginationRequest) {
         Pageable pageable = createPageable(paginationRequest);
-        // Exclude TERMINATED employees — they have been soft-deleted and should
-        // not appear in the default employee list.
-        Page<Employee> employeePage = employeeRepository.findByStatusNot(EmployeeStatus.TERMINATED, pageable);
+        // Show only ACTIVE employees in the default HR/admin list. INACTIVE,
+        // RESIGNED, ON_NOTICE, SUSPENDED and TERMINATED are hidden here. They
+        // remain reachable via GET /employees/status/{status}, GET /employees/filters,
+        // or directly in the database.
+        Page<Employee> employeePage = employeeRepository.findByStatus(EmployeeStatus.ACTIVE, pageable);
 
         return PagedResponse.of(
                 employeeMapper.toResponseList(employeePage.getContent()),
@@ -339,7 +341,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional(readOnly = true)
     public PagedResponse<EmployeeResponse> getEmployeesByManager(Long managerId, PaginationRequest paginationRequest) {
         Pageable pageable = createPageable(paginationRequest);
-        Page<Employee> employeePage = employeeRepository.findByManagerId(managerId, pageable);
+        // Managers see only their ACTIVE direct reports; inactive / ex-employees are hidden.
+        Page<Employee> employeePage = employeeRepository.findByManagerIdAndStatus(
+                managerId, EmployeeStatus.ACTIVE, pageable);
 
         return PagedResponse.of(
                 employeeMapper.toResponseList(employeePage.getContent()),
