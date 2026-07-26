@@ -88,7 +88,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Department", "id", id));
 
-        if (departmentRepository.countEmployeesByDepartment(id) > 0) {
+        if (departmentRepository.countAllEmployeesByDepartment(id) > 0) {
             throw new IllegalStateException("Cannot delete department with existing employees");
         }
 
