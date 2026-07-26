@@ -31,6 +31,14 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
     @Query("SELECT d FROM Department d WHERE LOWER(d.name) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Department> searchByName(@Param("search") String search, Pageable pageable);
 
-    @Query("SELECT COUNT(e) FROM Employee e WHERE e.department.id = :departmentId")
+    // Active-only headcount for a department. Drives the dashboard "Department
+    // Distribution" and the department page headcount, so inactive employees are
+    // not shown.
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.department.id = :departmentId AND e.status = com.financebuddha.finbud.hrms.enums.EmployeeStatus.ACTIVE")
     Long countEmployeesByDepartment(@Param("departmentId") Long departmentId);
+
+    // Unfiltered count (all statuses). Used by the delete guard so a department
+    // that still has inactive employees attached cannot be deleted.
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.department.id = :departmentId")
+    Long countAllEmployeesByDepartment(@Param("departmentId") Long departmentId);
 }
