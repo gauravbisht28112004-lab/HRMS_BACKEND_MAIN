@@ -33,7 +33,7 @@ public class PayrollResponse {
     private Integer workingDays;
     private BigDecimal lopDays;
 
-    // Attendance summary
+    // Day counts (derived from working days and manual LOP)
     private Integer totalWorkingDays;
     private BigDecimal presentDays;
     private BigDecimal absentDays;

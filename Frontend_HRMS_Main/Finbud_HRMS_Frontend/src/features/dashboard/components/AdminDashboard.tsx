@@ -86,8 +86,18 @@ export const AdminDashboard = () => {
 
       {isError ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          Couldn&apos;t load dashboard stats:{' '}
-          {(error as Error)?.message || 'unknown error'}.
+          <p>
+            Couldn&apos;t load dashboard stats:{' '}
+            {(error as Error)?.message || 'unknown error'}.
+          </p>
+          {/* The backend's GlobalExceptionHandler also returns the real
+              exception class + root message in errors[]. Surface it so a 500
+              isn't reduced to the opaque generic message. */}
+          {(error as { errors?: string[] })?.errors?.[0] ? (
+            <p className="mt-1 font-mono text-xs text-rose-600">
+              {(error as { errors?: string[] }).errors![0]}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

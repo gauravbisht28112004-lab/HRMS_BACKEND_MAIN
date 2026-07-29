@@ -23,14 +23,19 @@ import { useAuthStore } from '@/store/authStore';
 const ROLE_ADMIN = 'ROLE_ADMIN';
 const ROLE_HR = 'ROLE_HR';
 const ROLE_MANAGER = 'ROLE_MANAGER';
+const ROLE_TEAM_LEADER = 'ROLE_TEAM_LEADER';
+const ROLE_ATL = 'ROLE_ATL';
 const ROLE_EMPLOYEE = 'ROLE_EMPLOYEE';
 
-const ALL_ROLES = [ROLE_ADMIN, ROLE_HR, ROLE_MANAGER, ROLE_EMPLOYEE] as const;
+// Chain order: Admin -> Manager -> Team Leader -> ATL -> Employee (HR to the side).
+const ALL_ROLES = [ROLE_ADMIN, ROLE_HR, ROLE_MANAGER, ROLE_TEAM_LEADER, ROLE_ATL, ROLE_EMPLOYEE] as const;
 
 const roleLabel: Record<string, string> = {
   [ROLE_ADMIN]: 'Admin',
   [ROLE_HR]: 'HR',
-  [ROLE_MANAGER]: 'Team Leader',
+  [ROLE_MANAGER]: 'Manager',
+  [ROLE_TEAM_LEADER]: 'Team Leader',
+  [ROLE_ATL]: 'ATL',
   [ROLE_EMPLOYEE]: 'Employee',
 };
 
@@ -190,8 +195,14 @@ export const UserAccessCard = ({ employeeCode }: UserAccessCardProps) => {
   // would leave the user with zero roles (requires at least one to save).
   const isRoleEditableByCaller = (role: string): boolean => {
     if (isAdmin) return true;
-    // HR — only Employee and Manager are editable.
-    return role === ROLE_MANAGER || role === ROLE_EMPLOYEE;
+    // HR may grant the non-privileged chain roles (Manager, Team Leader, ATL,
+    // Employee) but not Admin/HR.
+    return (
+      role === ROLE_MANAGER ||
+      role === ROLE_TEAM_LEADER ||
+      role === ROLE_ATL ||
+      role === ROLE_EMPLOYEE
+    );
   };
 
   const handleSaveRoles = async () => {

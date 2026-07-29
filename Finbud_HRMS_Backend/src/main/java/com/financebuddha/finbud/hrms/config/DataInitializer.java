@@ -215,8 +215,9 @@ public class DataInitializer implements CommandLineRunner {
         return switch (roleType) {
             case ROLE_ADMIN -> "System administrator with full access";
             case ROLE_HR -> "Human resources manager";
-            case ROLE_MANAGER -> "Team manager with department access";
-            case ROLE_ATL -> "Assistant Team Leader — views cumulative commitment for employees assigned under them";
+            case ROLE_MANAGER -> "Manager — reports to Admin; assigns monthly targets to the Team Leaders under them and views their whole team's disbursal";
+            case ROLE_TEAM_LEADER -> "Team Leader — reports to a Manager; assigns monthly targets to the ATLs under them and views their whole team's disbursal";
+            case ROLE_ATL -> "Assistant Team Leader — reports to a Team Leader; assigns monthly targets to the employees under them and views their team's disbursal";
             case ROLE_EMPLOYEE -> "Regular employee";
         };
     }
@@ -232,10 +233,15 @@ public class DataInitializer implements CommandLineRunner {
                         "payroll:read", "payroll:write", "attendance:read", "leave:approve"));
                 break;
             case ROLE_MANAGER:
-                permissions.addAll(Set.of("employee:read", "attendance:read", "leave:approve"));
+                permissions.addAll(Set.of("employee:read", "attendance:read", "leave:approve",
+                        "commitment:read", "target:write"));
+                break;
+            case ROLE_TEAM_LEADER:
+                permissions.addAll(Set.of("employee:read", "attendance:read", "leave:approve",
+                        "commitment:read", "target:write"));
                 break;
             case ROLE_ATL:
-                permissions.addAll(Set.of("employee:read", "commitment:read"));
+                permissions.addAll(Set.of("employee:read", "commitment:read", "target:write"));
                 break;
             case ROLE_EMPLOYEE:
                 permissions.addAll(Set.of("employee:read", "attendance:read", "attendance:write",

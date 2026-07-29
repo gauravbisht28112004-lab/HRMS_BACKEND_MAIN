@@ -54,14 +54,15 @@ public class AuthServiceImpl implements AuthService {
         log.info("Login attempt for user: {}", request.getUsername());
 
         try {
+            String normalizedUsername = request.getUsername().trim().toLowerCase();
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(normalizedUsername, request.getPassword())
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", request.getUsername()));
+            User user = userRepository.findByUsername(normalizedUsername)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", normalizedUsername));
 
             user.setLastLoginAt(LocalDateTime.now());
             user.setFailedLoginAttempts(0);

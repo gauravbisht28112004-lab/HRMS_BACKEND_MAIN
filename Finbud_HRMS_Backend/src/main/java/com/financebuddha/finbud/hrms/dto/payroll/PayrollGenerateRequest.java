@@ -13,14 +13,12 @@ import java.math.BigDecimal;
  * <p>
  * The historical shape (month + year + optional employeeId) is preserved.
  * The manual-override fields ({@code lopDays}, {@code incentivesOverride},
- * {@code adjustments}, {@code adjustmentReason}) were added so HR can run a
- * payroll without requiring perfect attendance data — a common reality for
- * the Finbud roster where attendance is still being on-boarded and the
- * master sheet drives payroll on day one.
+ * {@code adjustments}, {@code adjustmentReason}) let HR run a payroll with
+ * per-run inputs — the Finbud roster is master-sheet driven, so payroll does
+ * not depend on any in-app attendance tracking.
  * <p>
- * When {@code lopDays} is present it takes precedence over the attendance
- * computation. When {@code null}, the service falls back to deriving LOP
- * from Attendance records.
+ * {@code lopDays} is the manual Loss-of-Pay for the run. When {@code null},
+ * the service assumes full attendance for the cycle (zero LOP).
  */
 @Data
 public class PayrollGenerateRequest {

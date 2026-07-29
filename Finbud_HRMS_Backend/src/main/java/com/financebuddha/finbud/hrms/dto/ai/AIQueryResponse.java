@@ -13,7 +13,7 @@ public class AIQueryResponse {
 
     private String query;
     private String response;
-    private String dataType; // attendance, leave, payroll, employee
+    private String dataType; // leave, payroll, employee
     private Object data; // Structured data if applicable
     private Integer tokensUsed;
     private Long responseTimeMs;

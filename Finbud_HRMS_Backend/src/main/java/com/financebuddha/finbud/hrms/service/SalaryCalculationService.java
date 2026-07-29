@@ -29,7 +29,7 @@ import java.math.BigDecimal;
 public interface SalaryCalculationService {
 
     /**
-     * Compute a full payroll line given the CTC structure and the attendance
+     * Compute a full payroll line given the CTC structure and the LOP
      * context for the month. The returned {@link CtcCalculationOutput} is
      * ready to be copied onto a {@code Payroll} entity.
      */

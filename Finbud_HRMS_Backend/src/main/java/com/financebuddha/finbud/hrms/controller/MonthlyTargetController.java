@@ -45,9 +45,10 @@ public class MonthlyTargetController {
     private final AuthzService authzService;
 
     @PutMapping("/{employeeId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'ATL')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'TEAM_LEADER', 'ATL')")
     @Operation(summary = "Set / update an employee's monthly target",
-               description = "TL/HR/Admin for anyone; an ATL only for their own direct reports. Same (employee, year, month) overwrites in place.")
+               description = "ADMIN/HR for anyone; a MANAGER, TEAM_LEADER or ATL only for their own direct reports "
+                       + "(the service enforces the one-hop cascade). Same (employee, year, month) overwrites in place.")
     public ResponseEntity<ApiResponse<MonthlyTargetResponse>> upsert(
             @CurrentUser UserPrincipal currentUser,
             @PathVariable Long employeeId,
@@ -68,8 +69,8 @@ public class MonthlyTargetController {
     }
 
     @GetMapping("/{employeeId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Any employee's monthly target", description = "TL/HR/Admin only.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'TEAM_LEADER', 'ATL')")
+    @Operation(summary = "Any employee's monthly target", description = "Supervisor/HR/Admin only.")
     public ResponseEntity<ApiResponse<MonthlyTargetResponse>> getOne(
             @PathVariable Long employeeId,
             @RequestParam Integer year,
@@ -78,8 +79,8 @@ public class MonthlyTargetController {
     }
 
     @GetMapping("/manager/{managerId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'ATL')")
-    @Operation(summary = "Team list", description = "Direct reports' monthly targets with achieved overlay. An ATL may query only their own team.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'TEAM_LEADER', 'ATL')")
+    @Operation(summary = "Team list", description = "Direct reports' monthly targets with achieved overlay. A supervisor may query only their own team.")
     public ResponseEntity<ApiResponse<List<MonthlyTargetResponse>>> listForManager(
             @PathVariable Long managerId,
             @RequestParam Integer year,

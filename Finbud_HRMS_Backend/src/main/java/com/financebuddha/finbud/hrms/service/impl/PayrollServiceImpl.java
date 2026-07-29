@@ -5,21 +5,19 @@ import com.financebuddha.finbud.hrms.dto.common.PaginationRequest;
 import com.financebuddha.finbud.hrms.dto.payroll.PayrollGenerateRequest;
 import com.financebuddha.finbud.hrms.dto.payroll.PayrollResponse;
 import com.financebuddha.finbud.hrms.dto.payroll.PayrollSummaryResponse;
-import com.financebuddha.finbud.hrms.entity.Attendance;
 import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.entity.Payroll;
 import com.financebuddha.finbud.hrms.entity.SalaryStructure;
-import com.financebuddha.finbud.hrms.enums.AttendanceStatus;
 import com.financebuddha.finbud.hrms.enums.EmployeeStatus;
 import com.financebuddha.finbud.hrms.enums.PayrollStatus;
 import com.financebuddha.finbud.hrms.exception.BadRequestException;
 import com.financebuddha.finbud.hrms.exception.ResourceNotFoundException;
 import com.financebuddha.finbud.hrms.mapper.PayrollMapper;
-import com.financebuddha.finbud.hrms.repository.AttendanceRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.PayrollRepository;
 import com.financebuddha.finbud.hrms.repository.SalaryStructureRepository;
 import com.financebuddha.finbud.hrms.security.AuthzService;
+import com.financebuddha.finbud.hrms.service.PayrollCycleService;
 import com.financebuddha.finbud.hrms.service.PayrollService;
 import com.financebuddha.finbud.hrms.service.SalaryCalculationService;
 import com.financebuddha.finbud.hrms.service.SalaryCalculationService.CtcCalculationInput;
@@ -40,7 +38,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,13 +49,13 @@ public class PayrollServiceImpl implements PayrollService {
 
     private final PayrollRepository payrollRepository;
     private final EmployeeRepository employeeRepository;
-    private final AttendanceRepository attendanceRepository;
     private final SalaryStructureRepository salaryStructureRepository;
     private final PayrollMapper payrollMapper;
     private final SalaryCalculationService salaryCalculationService;
     private final SystemConfigService systemConfig;
     private final PayslipPdfGenerator payslipPdfGenerator;
     private final AuthzService authz;
+    private final PayrollCycleService payrollCycle;
 
     // Default policy fallbacks when SystemConfig keys are missing. These
     // match the Flyway V5 seed values — update both in lockstep.
@@ -100,24 +98,22 @@ public class PayrollServiceImpl implements PayrollService {
         // Resolve the salary structure effective for this pay month — falls
         // back to "active" for backward compatibility with pre-V4 records
         // that never set effective_from.
-        LocalDate startOfMonth = LocalDate.of(year, month, 1);
-        LocalDate endOfMonth = startOfMonth.with(TemporalAdjusters.lastDayOfMonth());
+        // Pay cycle for this label (e.g. June = 25 May..24 Jun),
+        // NOT the calendar month. See PayrollCycleService.
+        LocalDate endOfMonth = payrollCycle.cycleEnd(year, month);
 
         SalaryStructure salary = salaryStructureRepository
                 .findEffectiveForEmployee(employeeId, endOfMonth)
                 .or(() -> salaryStructureRepository.findByEmployeeIdAndIsActiveTrue(employeeId))
                 .orElseThrow(() -> new ResourceNotFoundException("SalaryStructure", "employeeId", employeeId));
 
-        List<Attendance> attendances = attendanceRepository
-                .findByEmployeeIdAndAttendanceDateBetween(employeeId, startOfMonth, endOfMonth);
-
         Payroll payroll;
         if (salary.getStructureType() != null && salary.getMonthlyGrossCtc() != null) {
-            payroll = calculateCtcPayroll(employee, salary, attendances, month, year, request);
+            payroll = calculateCtcPayroll(employee, salary, month, year, request);
         } else {
             // Legacy component-based calc — preserved so historical payrolls
             // generated before the CTC model migrated can still be reproduced.
-            payroll = calculateLegacyPayroll(employee, salary, attendances, month, year);
+            payroll = calculateLegacyPayroll(employee, salary, month, year, request);
         }
         payroll.setGeneratedAt(LocalDateTime.now());
 
@@ -289,11 +285,15 @@ public class PayrollServiceImpl implements PayrollService {
     @Transactional
     public void autoGenerateMonthlyPayroll() {
         log.info("Auto-generating monthly payroll");
-        LocalDate now = LocalDate.now().minusMonths(1);
+        // Generate the cycle that has just CLOSED. The scheduler fires on the
+        // cycle-start-day (the 25th); the cycle that ended on the 24th is
+        // labelled by the current month. mostRecentlyClosedCycle() resolves
+        // this correctly regardless of the exact day it runs.
+        YearMonth target = payrollCycle.mostRecentlyClosedCycle(LocalDate.now());
 
         PayrollGenerateRequest request = new PayrollGenerateRequest();
-        request.setMonth(now.getMonthValue());
-        request.setYear(now.getYear());
+        request.setMonth(target.getMonthValue());
+        request.setYear(target.getYear());
 
         generatePayrollForAll(request);
     }
@@ -302,19 +302,17 @@ public class PayrollServiceImpl implements PayrollService {
     // CTC-model calculation — delegates math to SalaryCalculationService
     // ------------------------------------------------------------------
 
-    private Payroll calculateCtcPayroll(Employee employee, SalaryStructure salary, List<Attendance> attendances,
+    private Payroll calculateCtcPayroll(Employee employee, SalaryStructure salary,
                                         Integer month, Integer year, PayrollGenerateRequest overrides) {
 
         int totalWorkingDays = calculateWorkingDays(month, year);
 
-        // When HR submits a manual LOP for this run we honor it verbatim —
-        // the Finbud roster is master-sheet driven and attendance is still
-        // being on-boarded, so "trust the attendance table" is not yet a
-        // safe default. Fall back to the attendance computation only when
-        // the caller left lopDays null.
+        // Loss-of-Pay days are supplied manually per run. Attendance tracking
+        // now lives in a separate system, so when HR does not pass lopDays we
+        // assume full attendance for the cycle (zero LOP).
         BigDecimal lopDays = overrides != null && overrides.getLopDays() != null
                 ? overrides.getLopDays()
-                : computeLopDays(attendances, totalWorkingDays);
+                : BigDecimal.ZERO;
         if (lopDays.signum() < 0) {
             lopDays = BigDecimal.ZERO;
         }
@@ -413,58 +411,36 @@ public class PayrollServiceImpl implements PayrollService {
                 .build();
     }
 
-    private BigDecimal computeLopDays(List<Attendance> attendances, int totalWorkingDays) {
-        BigDecimal presentDays = BigDecimal.ZERO;
-        BigDecimal halfDays = BigDecimal.ZERO;
-        for (Attendance a : attendances) {
-            if (a.getStatus() == AttendanceStatus.PRESENT) {
-                if (Boolean.TRUE.equals(a.getIsHalfDay())) {
-                    halfDays = halfDays.add(new BigDecimal("0.5"));
-                    presentDays = presentDays.add(new BigDecimal("0.5"));
-                } else {
-                    presentDays = presentDays.add(BigDecimal.ONE);
-                }
-            }
-        }
-        BigDecimal effectiveDays = presentDays.add(halfDays.multiply(new BigDecimal("0.5")));
-        BigDecimal lop = BigDecimal.valueOf(totalWorkingDays).subtract(effectiveDays);
-        if (lop.signum() < 0) lop = BigDecimal.ZERO;
-        return lop;
-    }
-
     // ------------------------------------------------------------------
     // Legacy component-based calculation — kept for backward compatibility
     // ------------------------------------------------------------------
 
     @SuppressWarnings("deprecation")
-    private Payroll calculateLegacyPayroll(Employee employee, SalaryStructure salary, List<Attendance> attendances,
-                                           Integer month, Integer year) {
+    private Payroll calculateLegacyPayroll(Employee employee, SalaryStructure salary,
+                                           Integer month, Integer year, PayrollGenerateRequest overrides) {
 
         int totalWorkingDays = calculateWorkingDays(month, year);
 
-        BigDecimal presentDays = BigDecimal.ZERO;
+        // LOP is supplied manually per run (attendance tracking moved to a
+        // separate system). Absent an override we assume full attendance.
+        BigDecimal lopDays = overrides != null && overrides.getLopDays() != null
+                ? overrides.getLopDays()
+                : BigDecimal.ZERO;
+        if (lopDays.signum() < 0) {
+            lopDays = BigDecimal.ZERO;
+        }
+        BigDecimal maxLop = BigDecimal.valueOf(totalWorkingDays);
+        if (lopDays.compareTo(maxLop) > 0) {
+            lopDays = maxLop;
+        }
+
+        BigDecimal effectiveWorkingDays = BigDecimal.valueOf(totalWorkingDays).subtract(lopDays);
+        BigDecimal presentDays = effectiveWorkingDays;
         BigDecimal halfDays = BigDecimal.ZERO;
         BigDecimal overtimeHours = BigDecimal.ZERO;
         int weeklyOffDays = 0;
 
-        for (Attendance attendance : attendances) {
-            if (attendance.getStatus() == AttendanceStatus.PRESENT) {
-                if (Boolean.TRUE.equals(attendance.getIsHalfDay())) {
-                    halfDays = halfDays.add(new BigDecimal("0.5"));
-                    presentDays = presentDays.add(new BigDecimal("0.5"));
-                } else {
-                    presentDays = presentDays.add(BigDecimal.ONE);
-                }
-                if (attendance.getOvertimeHours() != null) {
-                    overtimeHours = overtimeHours.add(attendance.getOvertimeHours());
-                }
-            } else if (attendance.getStatus() == AttendanceStatus.WEEKLY_OFF) {
-                weeklyOffDays++;
-            }
-        }
-
-        BigDecimal effectiveWorkingDays = presentDays.add(halfDays.multiply(new BigDecimal("0.5")));
-        BigDecimal attendanceRatio = totalWorkingDays > 0 ?
+        BigDecimal proRataRatio = totalWorkingDays > 0 ?
                 effectiveWorkingDays.divide(BigDecimal.valueOf(totalWorkingDays), 4, RoundingMode.HALF_UP) :
                 BigDecimal.ZERO;
 
@@ -475,21 +451,20 @@ public class PayrollServiceImpl implements PayrollService {
         BigDecimal medical = zeroIfNull(salary.getMedicalAllowance());
         BigDecimal special = zeroIfNull(salary.getSpecialAllowance());
 
-        BigDecimal basicEarned      = basic.multiply(attendanceRatio).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal hraEarned        = hra.multiply(attendanceRatio).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal daEarned         = da.multiply(attendanceRatio).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal conveyanceEarned = conveyance.multiply(attendanceRatio).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal medicalEarned    = medical.multiply(attendanceRatio).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal specialEarned    = special.multiply(attendanceRatio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal basicEarned      = basic.multiply(proRataRatio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal hraEarned        = hra.multiply(proRataRatio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal daEarned         = da.multiply(proRataRatio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal conveyanceEarned = conveyance.multiply(proRataRatio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal medicalEarned    = medical.multiply(proRataRatio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal specialEarned    = special.multiply(proRataRatio).setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal grossEarnings = basicEarned.add(hraEarned).add(daEarned)
                 .add(conveyanceEarned).add(medicalEarned).add(specialEarned);
 
-        BigDecimal pfDeduction  = salary.getPfEmployeeContribution().multiply(attendanceRatio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal pfDeduction  = salary.getPfEmployeeContribution().multiply(proRataRatio).setScale(2, RoundingMode.HALF_UP);
         BigDecimal esiDeduction = salary.getEsiEmployeeContribution(grossEarnings).setScale(2, RoundingMode.HALF_UP);
         BigDecimal ptDeduction  = zeroIfNull(salary.getProfessionalTaxAmount());
 
-        BigDecimal lopDays = BigDecimal.valueOf(totalWorkingDays).subtract(effectiveWorkingDays);
         BigDecimal dailyGross = totalWorkingDays > 0
                 ? grossEarnings.divide(BigDecimal.valueOf(totalWorkingDays), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
@@ -497,12 +472,7 @@ public class PayrollServiceImpl implements PayrollService {
 
         BigDecimal totalDeductions = pfDeduction.add(esiDeduction).add(ptDeduction).add(lopDeduction);
 
-        BigDecimal hourlyRate = basic.signum() > 0
-                ? basic.divide(BigDecimal.valueOf(208), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-        BigDecimal overtimePay = overtimeHours.multiply(hourlyRate).multiply(new BigDecimal("2")).setScale(2, RoundingMode.HALF_UP);
-
-        BigDecimal netPay = grossEarnings.subtract(totalDeductions).add(overtimePay);
+        BigDecimal netPay = grossEarnings.subtract(totalDeductions);
 
         return Payroll.builder()
                 .employee(employee)
@@ -510,7 +480,7 @@ public class PayrollServiceImpl implements PayrollService {
                 .year(year)
                 .totalWorkingDays(totalWorkingDays)
                 .presentDays(presentDays)
-                .absentDays(BigDecimal.valueOf(totalWorkingDays).subtract(effectiveWorkingDays))
+                .absentDays(lopDays)
                 .leaveDays(BigDecimal.ZERO)
                 .halfDays(halfDays)
                 .weeklyOffDays(weeklyOffDays)
@@ -530,7 +500,7 @@ public class PayrollServiceImpl implements PayrollService {
                 .totalDeductions(totalDeductions)
                 .netPay(netPay)
                 .overtimeHours(overtimeHours)
-                .overtimePay(overtimePay)
+                .overtimePay(BigDecimal.ZERO)
                 .status(PayrollStatus.DRAFT)
                 .build();
     }
@@ -540,8 +510,9 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     private int calculateWorkingDays(int month, int year) {
-        LocalDate startOfMonth = LocalDate.of(year, month, 1);
-        LocalDate endOfMonth = startOfMonth.with(TemporalAdjusters.lastDayOfMonth());
+        // Working days across the pay cycle (25th..24th), not the calendar month.
+        LocalDate startOfMonth = payrollCycle.cycleStart(year, month);
+        LocalDate endOfMonth = payrollCycle.cycleEnd(year, month);
 
         int workingDays = 0;
         LocalDate date = startOfMonth;

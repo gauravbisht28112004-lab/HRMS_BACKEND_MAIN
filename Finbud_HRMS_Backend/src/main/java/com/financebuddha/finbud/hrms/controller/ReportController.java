@@ -32,14 +32,14 @@ import java.time.LocalDate;
  * the URL level in SecurityConfig for {@code /api/reports/**}). A
  * {@code departmentId} of {@code null} means "all departments".
  *
- * <p>Note: paths here ({@code /attendance.xlsx} etc.) do not collide with
+ * <p>Note: paths here ({@code /leave.xlsx} etc.) do not collide with
  * {@code /api/reports/commitment/**}, which is served by its own controller.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
-@Tag(name = "Reports", description = "Attendance, leave, payroll and overtime Excel exports")
+@Tag(name = "Reports", description = "Leave and payroll Excel exports")
 @SecurityRequirement(name = "bearerAuth")
 public class ReportController {
 
@@ -47,18 +47,6 @@ public class ReportController {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final ReportService reportService;
-
-    @GetMapping("/attendance.xlsx")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Attendance report (Excel) for a date range, optional department")
-    public ResponseEntity<byte[]> attendanceReport(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long departmentId) throws IOException {
-        validateDateWindow(startDate, endDate);
-        byte[] bytes = reportService.attendanceXlsx(startDate, endDate, departmentId);
-        return excelResponse("attendance-%s-to-%s.xlsx".formatted(startDate, endDate), bytes);
-    }
 
     @GetMapping("/leave.xlsx")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
@@ -82,18 +70,6 @@ public class ReportController {
         validateDateWindow(startDate, endDate);
         byte[] bytes = reportService.payrollXlsx(startDate, endDate, departmentId);
         return excelResponse("payroll-%s-to-%s.xlsx".formatted(startDate, endDate), bytes);
-    }
-
-    @GetMapping("/overtime.xlsx")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Overtime report (Excel) for a date range, optional department")
-    public ResponseEntity<byte[]> overtimeReport(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long departmentId) throws IOException {
-        validateDateWindow(startDate, endDate);
-        byte[] bytes = reportService.overtimeXlsx(startDate, endDate, departmentId);
-        return excelResponse("overtime-%s-to-%s.xlsx".formatted(startDate, endDate), bytes);
     }
 
     /**

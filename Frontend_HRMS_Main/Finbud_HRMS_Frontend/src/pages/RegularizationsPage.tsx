@@ -48,7 +48,7 @@ const emptyForm = {
 export const RegularizationsPage = () => {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
-  const canReview = user?.role === 'Admin' || user?.role === 'HR' || user?.role === 'Team Leader';
+  const canReview = user?.role === 'Admin' || user?.role === 'HR' || user?.role === 'Manager';
 
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState<string | null>(null);

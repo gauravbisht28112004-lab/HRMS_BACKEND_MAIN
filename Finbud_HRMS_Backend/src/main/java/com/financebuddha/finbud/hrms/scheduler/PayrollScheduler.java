@@ -13,8 +13,10 @@ public class PayrollScheduler {
 
     private final PayrollService payrollService;
 
-    // Run at 1:00 AM on the 1st day of every month
-    @Scheduled(cron = "${app.scheduler.payroll.cron:0 0 1 1 * ?}")
+    // Run at 01:00 IST on the cycle-start-day (the 25th), right after the
+    // previous cycle closes on the 24th. The day-of-month here MUST match
+    // app.payroll.cycle-start-day.
+    @Scheduled(cron = "${app.scheduler.payroll.cron:0 0 1 25 * ?}", zone = "Asia/Kolkata")
     public void generateMonthlyPayroll() {
         log.info("Starting automatic monthly payroll generation");
         try {

@@ -40,7 +40,7 @@ export const AttendancePage = () => {
   const [employee, setEmployee] = useState('All');
   const [rejectDialog, setRejectDialog] = useState<{ id: number; reason: string } | null>(null);
 
-  const canReviewAttendance = user?.role === 'Admin' || user?.role === 'HR' || user?.role === 'Team Leader';
+  const canReviewAttendance = user?.role === 'Admin' || user?.role === 'HR' || user?.role === 'Manager';
 
   const { data: accessibleEmployees = [] } = useQuery<Employee[]>({
     queryKey: ['attendance-employees', user?.role, user?.employeeDbId, user?.employeeId],
@@ -50,7 +50,7 @@ export const AttendancePage = () => {
         const employeeProfile = await api.employees.getByEmployeeId(user.employeeId);
         return employeeProfile ? [employeeProfile] : [];
       }
-      if (user.role === 'Team Leader' && user.employeeDbId) {
+      if (user.role === 'Manager' && user.employeeDbId) {
         return api.employees.listByManager(user.employeeDbId);
       }
       return api.employees.list();

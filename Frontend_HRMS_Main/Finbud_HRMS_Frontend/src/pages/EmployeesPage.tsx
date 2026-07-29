@@ -78,7 +78,7 @@ export const EmployeesPage = () => {
   const { data = [], isLoading } = useQuery<Employee[]>({
     queryKey: ['employees', user?.role, user?.employeeDbId],
     queryFn: () =>
-      user?.role === 'Team Leader' && user.employeeDbId
+      user?.role === 'Manager' && user.employeeDbId
         ? api.employees.listByManager(user.employeeDbId)
         : api.employees.list(),
     enabled: Boolean(user),
@@ -87,13 +87,13 @@ export const EmployeesPage = () => {
   const { data: departments = [] } = useQuery({
     queryKey: ['departments-options'],
     queryFn: api.departments.list,
-    enabled: user?.role !== 'Team Leader',
+    enabled: user?.role !== 'Manager',
   });
 
   const { data: shifts = [] } = useQuery({
     queryKey: ['shifts-options'],
     queryFn: api.shifts.list,
-    enabled: user?.role !== 'Team Leader',
+    enabled: user?.role !== 'Manager',
   });
 
   const { data: employeeDetails, isFetching: isDetailsFetching } = useQuery({
@@ -174,7 +174,7 @@ export const EmployeesPage = () => {
   const filtered = useMemo(
     () =>
       data.filter((employee) => {
-        const withinScope = user?.role !== 'Team Leader' || employee.managerId === user.employeeDbId;
+        const withinScope = user?.role !== 'Manager' || employee.managerId === user.employeeDbId;
         const matchesSearch = `${employee.firstName} ${employee.lastName} ${employee.id}`
           .toLowerCase()
           .includes(search.toLowerCase());
@@ -246,7 +246,7 @@ export const EmployeesPage = () => {
       <PageHeader
         title="Employee Management"
         description={
-          user?.role === 'Team Leader'
+          user?.role === 'Manager'
             ? 'View your team members. Edit access is restricted to HR and Admin.'
             : 'Create, edit, search, filter, and audit employee records with a live backend workflow.'
         }
@@ -358,7 +358,7 @@ export const EmployeesPage = () => {
             { key: 'employeeId', header: 'Employee ID', render: (employee) => employee.id },
             { key: 'department', header: 'Department', render: (employee) => employee.department },
             { key: 'shift', header: 'Shift', render: (employee) => employee.shiftAssignment },
-            { key: 'teamLeader', header: 'Team Leader', render: (employee) => employee.teamLeader },
+            { key: 'teamLeader', header: 'Manager', render: (employee) => employee.teamLeader },
             {
               key: 'status',
               header: 'Status',

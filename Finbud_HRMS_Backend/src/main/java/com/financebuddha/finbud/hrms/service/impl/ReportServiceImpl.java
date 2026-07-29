@@ -1,10 +1,8 @@
 package com.financebuddha.finbud.hrms.service.impl;
 
-import com.financebuddha.finbud.hrms.entity.Attendance;
 import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.entity.LeaveRequest;
 import com.financebuddha.finbud.hrms.entity.Payroll;
-import com.financebuddha.finbud.hrms.repository.AttendanceRepository;
 import com.financebuddha.finbud.hrms.repository.LeaveRequestRepository;
 import com.financebuddha.finbud.hrms.repository.PayrollRepository;
 import com.financebuddha.finbud.hrms.service.ReportService;
@@ -18,14 +16,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
- * Apache POI-based Excel builder for the admin Reports dashboard (Attendance,
- * Leave, Payroll, Overtime). Mirrors {@link CommitmentReportServiceImpl}:
- * single sheet, bold header row, one entity per row, auto-sized columns.
+ * Apache POI-based Excel builder for the admin Reports dashboard (Leave,
+ * Payroll). Mirrors {@link CommitmentReportServiceImpl}: single sheet, bold
+ * header row, one entity per row, auto-sized columns.
  *
  * <p>Each public method runs in a read-only transaction so the lazy
  * {@code employee} / {@code department} associations can be walked while the
@@ -35,40 +32,8 @@ import java.util.function.BiConsumer;
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
 
-    private final AttendanceRepository attendanceRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final PayrollRepository payrollRepository;
-
-    // ====================== ATTENDANCE ======================
-
-    private static final String[] ATTENDANCE_COLUMNS = {
-            "Date", "Employee Code", "Employee Name", "Department", "Designation",
-            "Status", "Punch In", "Punch Out", "Working Hours",
-            "Late", "Late Minutes", "Half Day", "Overtime Hours", "Notes"
-    };
-
-    @Override
-    @Transactional(readOnly = true)
-    public byte[] attendanceXlsx(LocalDate startDate, LocalDate endDate, Long departmentId) throws IOException {
-        List<Attendance> rows = attendanceRepository.findForReport(startDate, endDate, departmentId);
-        return build("Attendance", ATTENDANCE_COLUMNS, rows, (row, a) -> {
-            Employee emp = a.getEmployee();
-            row.createCell(0).setCellValue(str(a.getAttendanceDate()));
-            row.createCell(1).setCellValue(emp != null ? str(emp.getEmployeeId()) : "");
-            row.createCell(2).setCellValue(emp != null ? str(emp.getFullName()) : "");
-            row.createCell(3).setCellValue(departmentName(emp));
-            row.createCell(4).setCellValue(emp != null ? str(emp.getDesignation()) : "");
-            row.createCell(5).setCellValue(a.getStatus() != null ? a.getStatus().name() : "");
-            row.createCell(6).setCellValue(str(a.getPunchIn()));
-            row.createCell(7).setCellValue(str(a.getPunchOut()));
-            row.createCell(8).setCellValue(dbl(a.getWorkingHours()));
-            row.createCell(9).setCellValue(yesNo(a.getIsLate()));
-            row.createCell(10).setCellValue(num(a.getLateMinutes()));
-            row.createCell(11).setCellValue(yesNo(a.getIsHalfDay()));
-            row.createCell(12).setCellValue(dbl(a.getOvertimeHours()));
-            row.createCell(13).setCellValue(str(a.getNotes()));
-        });
-    }
 
     // ====================== LEAVE ======================
 
@@ -136,31 +101,6 @@ public class ReportServiceImpl implements ReportService {
         });
     }
 
-    // ====================== OVERTIME ======================
-
-    private static final String[] OVERTIME_COLUMNS = {
-            "Date", "Employee Code", "Employee Name", "Department", "Shift",
-            "Working Hours", "Overtime Hours", "Status", "Notes"
-    };
-
-    @Override
-    @Transactional(readOnly = true)
-    public byte[] overtimeXlsx(LocalDate startDate, LocalDate endDate, Long departmentId) throws IOException {
-        List<Attendance> rows = attendanceRepository.findOvertimeForReport(startDate, endDate, departmentId);
-        return build("Overtime", OVERTIME_COLUMNS, rows, (row, a) -> {
-            Employee emp = a.getEmployee();
-            row.createCell(0).setCellValue(str(a.getAttendanceDate()));
-            row.createCell(1).setCellValue(emp != null ? str(emp.getEmployeeId()) : "");
-            row.createCell(2).setCellValue(emp != null ? str(emp.getFullName()) : "");
-            row.createCell(3).setCellValue(departmentName(emp));
-            row.createCell(4).setCellValue(a.getShiftType() != null ? str(a.getShiftType().getName()) : "");
-            row.createCell(5).setCellValue(dbl(a.getWorkingHours()));
-            row.createCell(6).setCellValue(dbl(a.getOvertimeHours()));
-            row.createCell(7).setCellValue(a.getStatus() != null ? a.getStatus().name() : "");
-            row.createCell(8).setCellValue(str(a.getNotes()));
-        });
-    }
-
     // ====================== SHARED WORKBOOK BUILDER ======================
 
     /**
@@ -213,10 +153,6 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private static String str(LocalDate value) {
-        return value != null ? value.toString() : "";
-    }
-
-    private static String str(LocalDateTime value) {
         return value != null ? value.toString() : "";
     }
 

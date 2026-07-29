@@ -5,11 +5,9 @@ import com.financebuddha.finbud.hrms.entity.Department;
 import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.entity.LeaveRequest;
 import com.financebuddha.finbud.hrms.entity.Payroll;
-import com.financebuddha.finbud.hrms.enums.AttendanceStatus;
 import com.financebuddha.finbud.hrms.enums.EmployeeStatus;
 import com.financebuddha.finbud.hrms.enums.LeaveStatus;
 import com.financebuddha.finbud.hrms.enums.PayrollStatus;
-import com.financebuddha.finbud.hrms.repository.AttendanceRepository;
 import com.financebuddha.finbud.hrms.repository.DepartmentRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.LeaveRequestRepository;
@@ -30,7 +28,6 @@ import java.util.stream.Collectors;
 public class DashboardServiceImpl implements DashboardService {
 
     private final EmployeeRepository employeeRepository;
-    private final AttendanceRepository attendanceRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final PayrollRepository payrollRepository;
     private final DepartmentRepository departmentRepository;
@@ -49,22 +46,6 @@ public class DashboardServiceImpl implements DashboardService {
         Long activeEmployees = employeeRepository.countByStatus(EmployeeStatus.ACTIVE);
         Long onLeaveEmployees = countEmployeesOnLeaveToday(today);
         Long newEmployeesThisMonth = countNewEmployeesThisMonth(firstDayOfMonth);
-
-        // Attendance stats
-        List<com.financebuddha.finbud.hrms.entity.Attendance> todayAttendance =
-                attendanceRepository.findByAttendanceDate(today);
-        Long presentToday = todayAttendance.stream()
-                .filter(a -> a.getStatus() == AttendanceStatus.PRESENT)
-                .count();
-        Long absentToday = todayAttendance.stream()
-                .filter(a -> a.getStatus() == AttendanceStatus.ABSENT)
-                .count();
-        Long lateToday = todayAttendance.stream()
-                .filter(com.financebuddha.finbud.hrms.entity.Attendance::getIsLate)
-                .count();
-        Double onTimePercentage = presentToday > 0
-                ? ((presentToday - lateToday) * 100.0) / presentToday
-                : 0.0;
 
         // Leave stats
         Long pendingLeaves = leaveRequestRepository.findByStatus(LeaveStatus.PENDING, org.springframework.data.domain.Pageable.unpaged()).getTotalElements();
@@ -97,10 +78,6 @@ public class DashboardServiceImpl implements DashboardService {
                 .activeEmployees(activeEmployees)
                 .onLeaveEmployees(onLeaveEmployees)
                 .newEmployeesThisMonth(newEmployeesThisMonth)
-                .presentToday(presentToday)
-                .absentToday(absentToday)
-                .lateToday(lateToday)
-                .onTimePercentage(onTimePercentage)
                 .pendingLeaves(pendingLeaves)
                 .approvedLeavesThisMonth(approvedLeavesThisMonth)
                 .rejectedLeavesThisMonth(rejectedLeavesThisMonth)

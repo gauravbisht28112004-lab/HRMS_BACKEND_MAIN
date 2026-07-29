@@ -42,7 +42,7 @@ export const EmployeeProfilePage = () => {
   const isSelfProfile = Boolean(user?.role === 'Employee' && user.employeeId === resolvedEmployeeId);
   const canUseSelfServiceEdit = Boolean(isSelfProfile && user && !user.hasUsedSelfServiceEdit);
   const canHrEdit = user?.role === 'HR' || user?.role === 'Admin';
-  const isAllowedTeamLeaderView = user?.role !== 'Team Leader' || employee?.teamLeader === user.name;
+  const isAllowedTeamLeaderView = user?.role !== 'Manager' || employee?.teamLeader === user.name;
 
   const updateProfileMutation = useMutation({
     mutationFn: async () => {

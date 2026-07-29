@@ -62,6 +62,12 @@ const AtlMonthlyTargetPage = lazy(() =>
 const AtlTeamApprovalsPage = lazy(() =>
   import('@/pages/AtlTeamApprovalsPage').then((module) => ({ default: module.AtlTeamApprovalsPage })),
 );
+const HierarchyTargetsPage = lazy(() =>
+  import('@/pages/HierarchyTargetsPage').then((module) => ({ default: module.HierarchyTargetsPage })),
+);
+const AllEmployeeTargetsPage = lazy(() =>
+  import('@/pages/AllEmployeeTargetsPage').then((module) => ({ default: module.AllEmployeeTargetsPage })),
+);
 
 export const AppRouter = () => (
   <Suspense fallback={<div className="p-6 text-sm text-slate-500">Loading workspace...</div>}>
@@ -74,7 +80,7 @@ export const AppRouter = () => (
       <Route
         element={
           <ProtectedRoute
-            roles={['Admin', 'HR', 'Team Leader', 'ATL', 'Employee']}
+            roles={['Admin', 'HR', 'Manager', 'Team Leader', 'ATL', 'Employee']}
             allowWhileMustChangePassword
           />
         }
@@ -82,17 +88,17 @@ export const AppRouter = () => (
         <Route path="/force-change-password" element={<ForceChangePasswordPage />} />
       </Route>
 
-      <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Team Leader', 'ATL', 'Employee']} />}>
+      <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Manager', 'Team Leader', 'ATL', 'Employee']} />}>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="/my-profile" element={<EmployeeProfilePage />} />
 
-          <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Team Leader']} />}>
+          <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Manager']} />}>
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/employees/:employeeId" element={<EmployeeProfilePage />} />
           </Route>
 
-          <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Team Leader', 'ATL', 'Employee']} />}>
+          <Route element={<ProtectedRoute roles={['Admin', 'HR', 'Manager', 'Team Leader', 'ATL', 'Employee']} />}>
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/regularizations" element={<RegularizationsPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
@@ -117,11 +123,25 @@ export const AppRouter = () => (
             <Route path="/employee-payroll" element={<EmployeePayrollPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute roles={['Team Leader']} />}>
+          {/* Existing manager-level operational pages. These belong to the
+              backend MANAGER role, now labelled "Manager" in the UI. */}
+          <Route element={<ProtectedRoute roles={['Manager']} />}>
             <Route path="/team-daily-commitment" element={<TeamLeaderDailyCommitmentPage />} />
             <Route path="/team-monthly-commitment" element={<TeamLeaderMonthlyCommitmentPage />} />
             <Route path="/team-payroll" element={<TeamLeaderPayrollPage />} />
             <Route path="/team-reports" element={<TeamLeaderReportsPage />} />
+          </Route>
+
+          {/* Target-flow: every supervisor level assigns to its own direct
+              reports and sees its whole-team disbursal. The dashboard (index)
+              is the primary view; these give a dedicated menu entry too. */}
+          <Route element={<ProtectedRoute roles={['Manager', 'Team Leader', 'ATL']} />}>
+            <Route path="/my-team-targets" element={<HierarchyTargetsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute roles={['Admin', 'HR']} />}>
+            <Route path="/manager-overview" element={<HierarchyTargetsPage />} />
+            <Route path="/all-employee-targets" element={<AllEmployeeTargetsPage />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['ATL']} />}>

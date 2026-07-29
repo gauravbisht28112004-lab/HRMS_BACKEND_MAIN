@@ -20,12 +20,6 @@ public class DashboardStatsResponse {
     private Long onLeaveEmployees;
     private Long newEmployeesThisMonth;
 
-    // Attendance stats
-    private Long presentToday;
-    private Long absentToday;
-    private Long lateToday;
-    private Double onTimePercentage;
-
     // Leave stats
     private Long pendingLeaves;
     private Long approvedLeavesThisMonth;

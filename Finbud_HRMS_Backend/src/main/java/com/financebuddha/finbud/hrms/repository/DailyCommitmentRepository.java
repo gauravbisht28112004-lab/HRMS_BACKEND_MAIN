@@ -143,4 +143,53 @@ public interface DailyCommitmentRepository extends JpaRepository<DailyCommitment
         Long getManagerId();
         BigDecimal getTotal();
     }
+
+    /**
+     * Whole-subtree APPROVED actual-disbursal rollup, one row per "branch root".
+     *
+     * <p>For each id in {@code branchRootIds}, walks the entire management
+     * subtree beneath it (via {@code employees.manager_id}) — INCLUDING that
+     * root — and sums APPROVED daily disbursal in the date window. Because the
+     * reporting hierarchy is a single-parent tree, every employee rolls up to
+     * exactly one branch, so totals never double-count across branches (this
+     * is the "no overlapping data" guarantee for the tiered dashboards).
+     *
+     * <p>Used by the hierarchy dashboard: pass a supervisor's direct-report
+     * ids to get each direct report's "whole team disbursed" figure; the
+     * supervisor's own team total is simply the sum of those rows.
+     *
+     * <p>Native query — Postgres {@code WITH RECURSIVE}. Assumes an acyclic
+     * hierarchy (a management chain, which it is by construction). Callers must
+     * pass a non-empty id list — an empty {@code IN ()} is invalid SQL, so the
+     * service short-circuits when a node has no direct reports.
+     */
+    @Query(value = """
+           WITH RECURSIVE tree AS (
+               SELECT e.id AS emp_id, e.id AS branch_id
+                 FROM employees e
+                WHERE e.id IN (:branchRootIds)
+               UNION ALL
+               SELECT c.id AS emp_id, t.branch_id
+                 FROM employees c
+                 JOIN tree t ON c.manager_id = t.emp_id
+           )
+           SELECT t.branch_id AS "branchId",
+                  COALESCE(SUM(dc.actual_disbursal_amount), 0) AS "total"
+             FROM tree t
+             LEFT JOIN daily_commitments dc
+                    ON dc.employee_id = t.emp_id
+                   AND dc.status = 'APPROVED'
+                   AND dc.work_date BETWEEN :startDate AND :endDate
+            GROUP BY t.branch_id
+           """, nativeQuery = true)
+    List<BranchDisbursalRow> aggregateSubtreeDisbursalByBranch(
+            @Param("branchRootIds") List<Long> branchRootIds,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /** Projection for {@link #aggregateSubtreeDisbursalByBranch}. */
+    interface BranchDisbursalRow {
+        Long getBranchId();
+        BigDecimal getTotal();
+    }
 }

@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -25,7 +24,6 @@ public class AIServiceImpl implements AIService {
 
     private final OpenAiService openAiService;
     private final EmployeeRepository employeeRepository;
-    private final AttendanceRepository attendanceRepository;
     private final PayrollRepository payrollRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final AiEmbeddingRepository aiEmbeddingRepository;
@@ -95,18 +93,6 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public void indexAttendanceData(Long attendanceId) {
-        Attendance attendance = attendanceRepository.findById(attendanceId).orElse(null);
-        if (attendance == null) return;
-
-        String content = String.format("Attendance for %s on %s: Status: %s, Late: %s, Overtime: %s hours",
-                attendance.getEmployee().getFullName(), attendance.getAttendanceDate(),
-                attendance.getStatus(), attendance.getIsLate(), attendance.getOvertimeHours());
-
-        createEmbedding("attendance", attendanceId, content);
-    }
-
-    @Override
     public void indexPayrollData(Long payrollId) {
         Payroll payroll = payrollRepository.findById(payrollId).orElse(null);
         if (payroll == null) return;
@@ -161,9 +147,7 @@ public class AIServiceImpl implements AIService {
 
     private String analyzeQueryType(String query) {
         String lowerQuery = query.toLowerCase();
-        if (lowerQuery.contains("attendance") || lowerQuery.contains("present") || lowerQuery.contains("late") || lowerQuery.contains("absent")) {
-            return "attendance";
-        } else if (lowerQuery.contains("payroll") || lowerQuery.contains("salary") || lowerQuery.contains("pay")) {
+        if (lowerQuery.contains("payroll") || lowerQuery.contains("salary") || lowerQuery.contains("pay")) {
             return "payroll";
         } else if (lowerQuery.contains("leave") || lowerQuery.contains("vacation") || lowerQuery.contains("holiday")) {
             return "leave";
@@ -177,14 +161,6 @@ public class AIServiceImpl implements AIService {
         StringBuilder context = new StringBuilder();
 
         switch (queryType) {
-            case "attendance" -> {
-                LocalDate today = LocalDate.now();
-                List<Attendance> todayAttendance = attendanceRepository.findByAttendanceDate(today);
-                context.append("Today's attendance records: ").append(todayAttendance.size()).append(" entries. ");
-
-                List<Attendance> lateComers = attendanceRepository.findLateComersByDate(today);
-                context.append("Late comers today: ").append(lateComers.size()).append(". ");
-            }
             case "payroll" -> {
                 // Add payroll context
                 context.append("Payroll system information. ");
@@ -206,22 +182,5 @@ public class AIServiceImpl implements AIService {
     @Override
     public String generatePayrollSummary(Integer month, Integer year) {
         return "Payroll summary for " + month + "/" + year + ": Generated via AI";
-    }
-
-    @Override
-    public String getLateComersReport(LocalDate date) {
-        List<Attendance> lateComers = attendanceRepository.findLateComersByDate(date);
-        return "Late comers on " + date + ": " + lateComers.size();
-    }
-
-    @Override
-    public String getAbsentReport(LocalDate date) {
-        List<Attendance> absent = attendanceRepository.findAbsentByDate(date);
-        return "Absent employees on " + date + ": " + absent.size();
-    }
-
-    @Override
-    public String getOvertimeReport(Integer month, Integer year) {
-        return "Overtime report for " + month + "/" + year + ": Generated";
     }
 }

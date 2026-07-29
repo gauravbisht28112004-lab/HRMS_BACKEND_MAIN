@@ -134,6 +134,16 @@ public class SecurityConfig {
                 .requestMatchers("/api/atl/me/**").authenticated()
                 .requestMatchers("/api/atl/**").hasAnyRole("ADMIN", "HR", "ATL")
 
+                // ---------------- Hierarchy target-flow dashboards ----------------
+                // Every authenticated user reads their OWN tiered dashboard; the
+                // controller scopes it to their employee id and role. The flat
+                // "all employees" overview is ADMIN/HR only (also enforced by the
+                // method-level @PreAuthorize as defense-in-depth).
+                .requestMatchers("/api/hierarchy/dashboard/me").authenticated()
+                .requestMatchers("/api/hierarchy/all-employees").hasAnyRole("ADMIN", "HR")
+                .requestMatchers("/api/hierarchy/**")
+                        .hasAnyRole("ADMIN", "HR", "MANAGER", "TEAM_LEADER", "ATL")
+
                 // ---------------- Manager + above ----------------
                 // C-5: the actual leave routes are /api/leaves/{id}/approve and
                 // /api/leaves/{id}/reject — the old "/api/leaves/approve/**"

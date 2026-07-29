@@ -180,17 +180,24 @@ public class AuthzService {
      * employee outside their own team.
      */
     public void requireCanManageEmployee(Employee employee) {
-        if (hasAnyRole("ADMIN", "HR", "MANAGER")) {
+        // ADMIN / HR keep the org-wide override (e.g. Admin sets a Manager's
+        // target, HR corrects anyone's).
+        if (hasAnyRole("ADMIN", "HR")) {
             return;
         }
-        if (hasAnyRole("ATL")) {
+        // Every supervisor level in the chain — MANAGER, TEAM_LEADER, ATL — may
+        // only assign to / act on their OWN direct reports. This is what makes
+        // the target cascade one hop at a time: a Manager assigns to the Team
+        // Leaders directly under them, a Team Leader to their ATLs, an ATL to
+        // their employees — never skipping a level.
+        if (hasAnyRole("MANAGER", "TEAM_LEADER", "ATL")) {
             UserPrincipal principal = currentPrincipal();
             if (principal != null && principal.getEmployeePrimaryId() != null
                     && employee != null && employee.getManager() != null
                     && principal.getEmployeePrimaryId().equals(employee.getManager().getId())) {
                 return;
             }
-            throw new ForbiddenException("An ATL can only manage employees in their own team");
+            throw new ForbiddenException("You can only manage your own direct reports");
         }
         throw new ForbiddenException("Not authorized to manage this employee");
     }
@@ -202,16 +209,20 @@ public class AuthzService {
      * employee primary-key id. Throws {@link ForbiddenException} otherwise.
      */
     public void requireCanActAsManager(Long managerId) {
-        if (hasAnyRole("ADMIN", "HR", "MANAGER")) {
+        if (hasAnyRole("ADMIN", "HR")) {
             return;
         }
-        if (hasAnyRole("ATL")) {
+        // A supervisor (MANAGER / TEAM_LEADER / ATL) may only list their OWN
+        // team's targets — managerId must be their own employee id. This keeps
+        // each level's view scoped to their direct reports (no peeking at a
+        // sibling's team, no overlap between levels).
+        if (hasAnyRole("MANAGER", "TEAM_LEADER", "ATL")) {
             UserPrincipal principal = currentPrincipal();
             if (principal != null && managerId != null
                     && managerId.equals(principal.getEmployeePrimaryId())) {
                 return;
             }
-            throw new ForbiddenException("An ATL can only view their own team");
+            throw new ForbiddenException("You can only view your own team");
         }
         throw new ForbiddenException("Not authorized to view this team");
     }
