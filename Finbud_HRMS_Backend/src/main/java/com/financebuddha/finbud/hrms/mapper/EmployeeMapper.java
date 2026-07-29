@@ -5,7 +5,6 @@ import com.financebuddha.finbud.hrms.dto.employee.EmployeeDetailResponse;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeRequest;
 import com.financebuddha.finbud.hrms.dto.employee.EmployeeResponse;
 import com.financebuddha.finbud.hrms.entity.Employee;
-import com.financebuddha.finbud.hrms.entity.SalaryStructure;
 import com.financebuddha.finbud.hrms.service.ObjectStorageService;
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,8 +55,6 @@ public abstract class EmployeeMapper {
     @Mapping(target = "departmentName", source = "department.name")
     @Mapping(target = "managerId", source = "manager.id")
     @Mapping(target = "managerName", expression = "java(employee.getManager() != null ? employee.getManager().getFullName() : null)")
-    @Mapping(target = "shiftTypeId", source = "shiftType.id")
-    @Mapping(target = "shiftName", source = "shiftType.name")
     @Mapping(target = "fullName", expression = "java(employee.getFullName())")
     public abstract EmployeeResponse toResponse(Employee employee);
 
@@ -90,14 +87,7 @@ public abstract class EmployeeMapper {
     @Mapping(target = "employeeId", ignore = true)
     @Mapping(target = "department", ignore = true)
     @Mapping(target = "manager", ignore = true)
-    @Mapping(target = "shiftType", ignore = true)
-    @Mapping(target = "salaryStructure", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "attendances", ignore = true)
-    @Mapping(target = "leaveRequests", ignore = true)
-    @Mapping(target = "payrolls", ignore = true)
-    @Mapping(target = "leaveBalances", ignore = true)
-    @Mapping(target = "shiftAssignments", ignore = true)
     @Mapping(target = "subordinates", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -117,14 +107,7 @@ public abstract class EmployeeMapper {
     @Mapping(target = "employeeId", ignore = true)
     @Mapping(target = "department", ignore = true)
     @Mapping(target = "manager", ignore = true)
-    @Mapping(target = "shiftType", ignore = true)
-    @Mapping(target = "salaryStructure", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "attendances", ignore = true)
-    @Mapping(target = "leaveRequests", ignore = true)
-    @Mapping(target = "payrolls", ignore = true)
-    @Mapping(target = "leaveBalances", ignore = true)
-    @Mapping(target = "shiftAssignments", ignore = true)
     @Mapping(target = "subordinates", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
@@ -138,35 +121,9 @@ public abstract class EmployeeMapper {
     // ------------------------------------------------------------------
 
     @Mapping(target = "employee", source = ".")
-    @Mapping(target = "salaryInfo", expression = "java(mapSalaryInfo(employee.getSalaryStructure()))")
     @Mapping(target = "bankInfo", expression = "java(mapBankInfo(employee))")
     @Mapping(target = "identityInfo", expression = "java(mapIdentityInfo(employee))")
     public abstract EmployeeDetailResponse toDetailResponse(Employee employee);
-
-    protected EmployeeDetailResponse.SalaryInfo mapSalaryInfo(SalaryStructure salary) {
-        if (salary == null) return null;
-        return EmployeeDetailResponse.SalaryInfo.builder()
-                .salaryStructureId(salary.getId())
-                .structureType(salary.getStructureType())
-                .monthlyGrossCtc(salary.getMonthlyGrossCtc())
-                .nth(salary.getNth())
-                .annualCtc(salary.getAnnualCtc())
-                .monthlyCtc(salary.getMonthlyCtc())
-                .employerPf(salary.getEmployerPf())
-                .employeePf(salary.getEmployeePf())
-                .employerEsi(salary.getEmployerEsi())
-                .employeeEsi(salary.getEmployeeEsi())
-                .lwfAmount(salary.getLwfAmount())
-                .tdsAmount(salary.getTdsAmount())
-                .tdsRatePercent(salary.getTdsRatePercent())
-                .incentives(salary.getIncentives())
-                .otherDeductions(salary.getOtherDeductions())
-                .numOfMonths(salary.getNumOfMonths())
-                .effectiveFrom(salary.getEffectiveFrom())
-                .effectiveTo(salary.getEffectiveTo())
-                .isActive(salary.getIsActive())
-                .build();
-    }
 
     protected EmployeeDetailResponse.BankInfo mapBankInfo(Employee employee) {
         if (employee == null) return null;

@@ -53,13 +53,9 @@ export const Sidebar = () => {
   if (role === 'Employee') {
     const employeeItems = [
       { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-      { label: 'Attendance', path: '/attendance', icon: CalendarDays },
-      { label: 'Regularizations', path: '/regularizations', icon: FileCheck2 },
-      { label: 'Leave Management', path: '/leave', icon: PlaneTakeoff },
       { label: 'Daily Commitment', path: '/daily-commitment', icon: Target },
       { label: 'Hourly Updates', path: '/hourly-updates', icon: Clock3 },
       { label: 'Monthly Targets', path: '/monthly-targets', icon: BarChart3 },
-      { label: 'Payroll', path: '/employee-payroll', icon: Wallet },
       { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 
@@ -124,13 +120,9 @@ export const Sidebar = () => {
       { label: 'Dashboard', path: '/', icon: LayoutDashboard },
       { label: 'My Team & Targets', path: '/my-team-targets', icon: Target },
       { label: 'Team Members', path: '/employees', icon: Users },
-      { label: 'Team Attendance', path: '/attendance', icon: CalendarDays },
-      { label: 'Regularizations', path: '/regularizations', icon: FileCheck2 },
-      { label: 'Leave', path: '/leave', icon: PlaneTakeoff },
       { label: 'Daily Commitment', path: '/team-daily-commitment', icon: Target },
       { label: 'Monthly Commitment', path: '/team-monthly-commitment', icon: BarChart3 },
       { label: 'Team Reports', path: '/team-reports', icon: ClipboardList },
-      { label: 'My Payroll', path: '/team-payroll', icon: Wallet },
       { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 
@@ -194,9 +186,6 @@ export const Sidebar = () => {
     const teamLeaderItems = [
       { label: 'Dashboard', path: '/', icon: LayoutDashboard },
       { label: 'My Team & Targets', path: '/my-team-targets', icon: Target },
-      { label: 'Attendance', path: '/attendance', icon: CalendarDays },
-      { label: 'Regularizations', path: '/regularizations', icon: FileCheck2 },
-      { label: 'Leave', path: '/leave', icon: PlaneTakeoff },
       { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 
@@ -262,9 +251,6 @@ export const Sidebar = () => {
       { label: 'Dashboard', path: '/', icon: LayoutDashboard },
       { label: 'My Team Commitment', path: '/atl-monthly-target', icon: Target },
       { label: 'Team Approvals', path: '/atl-daily-commitment', icon: ClipboardList },
-      { label: 'Attendance', path: '/attendance', icon: CalendarDays },
-      { label: 'Regularizations', path: '/regularizations', icon: FileCheck2 },
-      { label: 'Leave', path: '/leave', icon: PlaneTakeoff },
       { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 

@@ -16,7 +16,6 @@ import {
   createEmptyEmployeeFormValues,
   type EmployeeFormValues,
 } from '@/services/requestMappers';
-import { SalaryTab } from './SalaryTab';
 
 interface EmployeeFormProps {
   initialValues?: EmployeeFormValues;
@@ -158,7 +157,7 @@ export const EmployeeForm = ({
   const [activeTab, setActiveTab] = useState<TabKey>('identity');
 
   // Only HR/Admin, and only in edit mode (so we have a backend id), can see salary.
-  const showSalaryTab = isEditMode && canEditSalary;
+  const showSalaryTab = false;
   const TABS = useMemo<TabDefinition[]>(
     () => (showSalaryTab ? [...BASE_TABS, SALARY_TAB] : BASE_TABS),
     [showSalaryTab],
@@ -244,15 +243,6 @@ export const EmployeeForm = ({
           </button>
         ))}
       </div>
-
-      {activeTab === 'salary' ? (
-        <div className="mt-6">
-          <SalaryTab
-            employeeBackendId={backendEmployeeId ?? null}
-            canEdit={canEditSalary}
-          />
-        </div>
-      ) : null}
 
       <form
         onSubmit={handleSubmit}

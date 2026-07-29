@@ -24,8 +24,6 @@ public class AIServiceImpl implements AIService {
 
     private final OpenAiService openAiService;
     private final EmployeeRepository employeeRepository;
-    private final PayrollRepository payrollRepository;
-    private final LeaveRequestRepository leaveRequestRepository;
     private final AiEmbeddingRepository aiEmbeddingRepository;
 
     @Value("${openai.api.model}")
@@ -92,30 +90,6 @@ public class AIServiceImpl implements AIService {
         createEmbedding("employee", employeeId, content);
     }
 
-    @Override
-    public void indexPayrollData(Long payrollId) {
-        Payroll payroll = payrollRepository.findById(payrollId).orElse(null);
-        if (payroll == null) return;
-
-        String content = String.format("Payroll for %s - %s/%s: Net Pay: %s, Status: %s",
-                payroll.getEmployee().getFullName(), payroll.getMonth(), payroll.getYear(),
-                payroll.getNetPay(), payroll.getStatus());
-
-        createEmbedding("payroll", payrollId, content);
-    }
-
-    @Override
-    public void indexLeaveData(Long leaveId) {
-        LeaveRequest leave = leaveRequestRepository.findById(leaveId).orElse(null);
-        if (leave == null) return;
-
-        String content = String.format("Leave for %s: Type: %s, From: %s to %s, Days: %s, Status: %s",
-                leave.getEmployee().getFullName(), leave.getLeaveType(),
-                leave.getStartDate(), leave.getEndDate(), leave.getDaysRequested(), leave.getStatus());
-
-        createEmbedding("leave", leaveId, content);
-    }
-
     private void createEmbedding(String entityType, Long entityId, String content) {
         try {
             EmbeddingRequest embeddingRequest = EmbeddingRequest.builder()
@@ -179,8 +153,4 @@ public class AIServiceImpl implements AIService {
         return context.toString();
     }
 
-    @Override
-    public String generatePayrollSummary(Integer month, Integer year) {
-        return "Payroll summary for " + month + "/" + year + ": Generated via AI";
-    }
 }

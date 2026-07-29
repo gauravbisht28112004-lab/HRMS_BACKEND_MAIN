@@ -114,15 +114,6 @@ public class EmployeeController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping("/shift/{shiftTypeId}")
-    @Operation(summary = "Get employees by shift", description = "Get employees assigned to a shift")
-    public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> getEmployeesByShift(
-            @PathVariable Long shiftTypeId,
-            @ParameterObject PaginationRequest paginationRequest) {
-        PagedResponse<EmployeeResponse> response = employeeService.getEmployeesByShift(shiftTypeId, paginationRequest);
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
-
     @GetMapping("/status/{status}")
     @Operation(summary = "Get employees by status", description = "Get employees filtered by status")
     public ResponseEntity<ApiResponse<PagedResponse<EmployeeResponse>>> getEmployeesByStatus(

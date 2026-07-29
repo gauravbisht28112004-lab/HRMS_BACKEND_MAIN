@@ -203,21 +203,6 @@ public class Employee extends BaseEntity {
     @Column(name = "notice_period_days")
     private Integer noticePeriodDays;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shift_type_id")
-    private ShiftType shiftType;
-
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<ShiftAssignment> shiftAssignments = new ArrayList<>();
-
-    // Office the employee reports to. Used to enforce punch-geofence when
-    // OfficeLocation.enforceGeofence is true. Optional — new employees pick
-    // up the seeded default office via the V11 backfill.
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "office_location_id")
-    private OfficeLocation officeLocation;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
@@ -388,30 +373,8 @@ public class Employee extends BaseEntity {
     // Relationships
     // ------------------------------------------------------------------
 
-    // NOTE: stays @OneToOne for now. If Finbud adopts multi-row salary history
-    // (H5), this needs to flip to @OneToMany together with a SalaryServiceImpl
-    // refactor — will surface that change in Checkpoint 5 before making it.
-    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
-    private SalaryStructure salaryStructure;
-
     @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
     private User user;
-
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<Attendance> attendances = new ArrayList<>();
-
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<LeaveRequest> leaveRequests = new ArrayList<>();
-
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<Payroll> payrolls = new ArrayList<>();
-
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<LeaveBalance> leaveBalances = new ArrayList<>();
 
     // ------------------------------------------------------------------
     // Derived

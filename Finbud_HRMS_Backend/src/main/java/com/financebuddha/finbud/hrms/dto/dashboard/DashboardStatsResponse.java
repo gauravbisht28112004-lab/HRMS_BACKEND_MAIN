@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -17,19 +16,7 @@ public class DashboardStatsResponse {
     // Employee stats
     private Long totalEmployees;
     private Long activeEmployees;
-    private Long onLeaveEmployees;
     private Long newEmployeesThisMonth;
-
-    // Leave stats
-    private Long pendingLeaves;
-    private Long approvedLeavesThisMonth;
-    private Long rejectedLeavesThisMonth;
-
-    // Payroll stats
-    private BigDecimal monthlyPayroll;
-    private BigDecimal totalDeductionsThisMonth;
-    private Long paidPayrollsThisMonth;
-    private Long pendingPayrolls;
 
     // Department stats
     private Long totalDepartments;

@@ -1,6 +1,5 @@
 package com.financebuddha.finbud.hrms.dto.employee;
 
-import com.financebuddha.finbud.hrms.enums.SalaryStructureType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,35 +21,8 @@ import java.time.LocalDate;
 public class EmployeeDetailResponse {
 
     private EmployeeResponse employee;
-    private SalaryInfo salaryInfo;
     private BankInfo bankInfo;
     private IdentityInfo identityInfo;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class SalaryInfo {
-        private Long salaryStructureId;
-        private SalaryStructureType structureType;
-        private BigDecimal monthlyGrossCtc;
-        private BigDecimal nth;
-        private BigDecimal annualCtc;
-        private BigDecimal monthlyCtc;
-        private BigDecimal employerPf;
-        private BigDecimal employeePf;
-        private BigDecimal employerEsi;
-        private BigDecimal employeeEsi;
-        private BigDecimal lwfAmount;
-        private BigDecimal tdsAmount;
-        private BigDecimal tdsRatePercent;
-        private BigDecimal incentives;
-        private BigDecimal otherDeductions;
-        private Integer numOfMonths;
-        private LocalDate effectiveFrom;
-        private LocalDate effectiveTo;
-        private Boolean isActive;
-    }
 
     @Data
     @Builder

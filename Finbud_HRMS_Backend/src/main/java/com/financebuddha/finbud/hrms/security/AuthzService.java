@@ -2,8 +2,6 @@ package com.financebuddha.finbud.hrms.security;
 
 import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.exception.ForbiddenException;
-import com.financebuddha.finbud.hrms.repository.AttendanceRepository;
-import com.financebuddha.finbud.hrms.repository.LeaveRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -37,9 +35,6 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class AuthzService {
 
-    private final AttendanceRepository attendanceRepository;
-    private final LeaveRequestRepository leaveRequestRepository;
-
     /**
      * True if the authenticated user is the employee identified by
      * {@code employeeId} (compared against {@link UserPrincipal#getEmployeePrimaryId()}).
@@ -55,45 +50,6 @@ public class AuthzService {
             return false;
         }
         return employeeId.equals(principal.getEmployeePrimaryId());
-    }
-
-    /**
-     * True if the authenticated user owns the attendance row identified by
-     * {@code attendanceId}. Looks up the row and compares its
-     * {@code employee.id} against the principal's employee primary-key id.
-     * Returns false (rather than throwing) for missing rows so the caller
-     * sees a clean 403 instead of a 500.
-     */
-    public boolean ownsAttendance(Long attendanceId) {
-        if (attendanceId == null) {
-            return false;
-        }
-        UserPrincipal principal = currentPrincipal();
-        if (principal == null || principal.getEmployeePrimaryId() == null) {
-            return false;
-        }
-        return attendanceRepository.findById(attendanceId)
-                .map(a -> a.getEmployee() != null
-                        && principal.getEmployeePrimaryId().equals(a.getEmployee().getId()))
-                .orElse(false);
-    }
-
-    /**
-     * True if the authenticated user owns the leave request identified by
-     * {@code leaveRequestId}.
-     */
-    public boolean ownsLeave(Long leaveRequestId) {
-        if (leaveRequestId == null) {
-            return false;
-        }
-        UserPrincipal principal = currentPrincipal();
-        if (principal == null || principal.getEmployeePrimaryId() == null) {
-            return false;
-        }
-        return leaveRequestRepository.findById(leaveRequestId)
-                .map(l -> l.getEmployee() != null
-                        && principal.getEmployeePrimaryId().equals(l.getEmployee().getId()))
-                .orElse(false);
     }
 
     /**
@@ -137,30 +93,6 @@ public class AuthzService {
         }
         throw new ForbiddenException(
                 "Not authorized to access data for employee " + employeeId);
-    }
-
-    /**
-     * Allow if the caller has ADMIN/HR/MANAGER, OR is the employee that owns
-     * the attendance row identified by {@code attendanceId}. Throws otherwise.
-     */
-    public void requireOwnsAttendanceOrPrivileged(Long attendanceId) {
-        if (hasAnyRole("ADMIN", "HR", "MANAGER") || ownsAttendance(attendanceId)) {
-            return;
-        }
-        throw new ForbiddenException(
-                "Not authorized to access attendance record " + attendanceId);
-    }
-
-    /**
-     * Allow if the caller has ADMIN/HR/MANAGER, OR is the employee that owns
-     * the leave request identified by {@code leaveRequestId}. Throws otherwise.
-     */
-    public void requireOwnsLeaveOrPrivileged(Long leaveRequestId) {
-        if (hasAnyRole("ADMIN", "HR", "MANAGER") || ownsLeave(leaveRequestId)) {
-            return;
-        }
-        throw new ForbiddenException(
-                "Not authorized to access leave request " + leaveRequestId);
     }
 
     // =====================================================================

@@ -36,7 +36,6 @@ public interface EmployeeService {
 
     PagedResponse<EmployeeResponse> getEmployeesByManager(Long managerId, PaginationRequest paginationRequest);
 
-    PagedResponse<EmployeeResponse> getEmployeesByShift(Long shiftTypeId, PaginationRequest paginationRequest);
 
     PagedResponse<EmployeeResponse> getEmployeesByStatus(EmployeeStatus status, PaginationRequest paginationRequest);
 

@@ -9,7 +9,6 @@ import com.financebuddha.finbud.hrms.dto.employee.EmployeeResponse;
 import com.financebuddha.finbud.hrms.entity.Department;
 import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.entity.Role;
-import com.financebuddha.finbud.hrms.entity.ShiftType;
 import com.financebuddha.finbud.hrms.entity.User;
 import com.financebuddha.finbud.hrms.enums.EmployeeStatus;
 import com.financebuddha.finbud.hrms.enums.RoleType;
@@ -19,7 +18,6 @@ import com.financebuddha.finbud.hrms.mapper.EmployeeMapper;
 import com.financebuddha.finbud.hrms.repository.DepartmentRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.RoleRepository;
-import com.financebuddha.finbud.hrms.repository.ShiftTypeRepository;
 import com.financebuddha.finbud.hrms.repository.UserRepository;
 import com.financebuddha.finbud.hrms.service.EmployeeService;
 import com.financebuddha.finbud.hrms.service.SystemConfigService;
@@ -47,7 +45,6 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
-    private final ShiftTypeRepository shiftTypeRepository;
     private final EmployeeMapper employeeMapper;
 
     // ------------------------------------------------------------------
@@ -94,13 +91,6 @@ public class EmployeeServiceImpl implements EmployeeService {
             Employee manager = employeeRepository.findById(request.getManagerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Employee", "managerId", request.getManagerId()));
             employee.setManager(manager);
-        }
-
-        // Set shift if provided
-        if (request.getShiftTypeId() != null) {
-            ShiftType shiftType = shiftTypeRepository.findById(request.getShiftTypeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ShiftType", "id", request.getShiftTypeId()));
-            employee.setShiftType(shiftType);
         }
 
         Employee savedEmployee = employeeRepository.save(employee);
@@ -243,13 +233,6 @@ public class EmployeeServiceImpl implements EmployeeService {
             employee.setManager(manager);
         }
 
-        // Update shift if provided
-        if (request.getShiftTypeId() != null) {
-            ShiftType shiftType = shiftTypeRepository.findById(request.getShiftTypeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ShiftType", "id", request.getShiftTypeId()));
-            employee.setShiftType(shiftType);
-        }
-
         Employee updatedEmployee = employeeRepository.save(employee);
         log.info("Employee updated successfully: {}", updatedEmployee.getId());
 
@@ -353,19 +336,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         );
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public PagedResponse<EmployeeResponse> getEmployeesByShift(Long shiftTypeId, PaginationRequest paginationRequest) {
-        Pageable pageable = createPageable(paginationRequest);
-        Page<Employee> employeePage = employeeRepository.findByShiftTypeId(shiftTypeId, pageable);
-
-        return PagedResponse.of(
-                employeeMapper.toResponseList(employeePage.getContent()),
-                employeePage.getNumber(),
-                employeePage.getSize(),
-                employeePage.getTotalElements()
-        );
-    }
 
     @Override
     @Transactional(readOnly = true)

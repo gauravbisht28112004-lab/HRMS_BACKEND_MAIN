@@ -12,9 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { createEmployeeFormValuesFromEmployee, mapEmployeeFormToRequest } from '@/services/requestMappers';
-import { SalarySnapshotCard } from '@/features/employee/components/SalarySnapshotCard';
 import { UserAccessCard } from '@/features/employee/components/UserAccessCard';
-import { ShiftAssignmentCard } from '@/features/shifts/components/ShiftAssignmentCard';
 
 export const EmployeeProfilePage = () => {
   const { employeeId = '' } = useParams();
@@ -238,10 +236,6 @@ export const EmployeeProfilePage = () => {
           </form>
         </Card>
       ) : null}
-
-      {canHrEdit ? <SalarySnapshotCard employeeBackendId={employee.backendId} /> : null}
-
-      {canHrEdit ? <ShiftAssignmentCard employeeBackendId={employee.backendId} /> : null}
 
       {canHrEdit ? <UserAccessCard employeeCode={employee.id} /> : null}
 

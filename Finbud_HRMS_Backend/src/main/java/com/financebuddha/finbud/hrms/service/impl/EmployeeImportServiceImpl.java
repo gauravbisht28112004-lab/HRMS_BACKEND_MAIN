@@ -5,7 +5,6 @@ import com.financebuddha.finbud.hrms.dto.imports.ImportResponse;
 import com.financebuddha.finbud.hrms.entity.Department;
 import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.entity.Role;
-import com.financebuddha.finbud.hrms.entity.SalaryStructure;
 import com.financebuddha.finbud.hrms.entity.User;
 import com.financebuddha.finbud.hrms.enums.BackgroundCheckStatus;
 import com.financebuddha.finbud.hrms.enums.BloodGroup;
@@ -16,11 +15,9 @@ import com.financebuddha.finbud.hrms.enums.Gender;
 import com.financebuddha.finbud.hrms.enums.MaritalStatus;
 import com.financebuddha.finbud.hrms.enums.ProducerType;
 import com.financebuddha.finbud.hrms.enums.RoleType;
-import com.financebuddha.finbud.hrms.enums.SalaryStructureType;
 import com.financebuddha.finbud.hrms.repository.DepartmentRepository;
 import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import com.financebuddha.finbud.hrms.repository.RoleRepository;
-import com.financebuddha.finbud.hrms.repository.SalaryStructureRepository;
 import com.financebuddha.finbud.hrms.repository.UserRepository;
 import com.financebuddha.finbud.hrms.service.EmployeeImportService;
 import com.financebuddha.finbud.hrms.service.SystemConfigService;
@@ -66,7 +63,6 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
     private final DepartmentRepository departmentRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final SalaryStructureRepository salaryStructureRepository;
     private final PasswordEncoder passwordEncoder;
     private final SystemConfigService systemConfig;
     /**
@@ -258,22 +254,6 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
 
         if (!opts.isDryRun()) {
             employee = employeeRepository.save(employee);
-        }
-
-        // Salary structure — only if the row actually declares a CTC model.
-        // Rows that omit all salary fields keep their existing structure (if any).
-        if (dto.getStructureType() != null && !dto.getStructureType().trim().isEmpty()) {
-            try {
-                upsertSalaryStructure(employee, dto, opts.isDryRun());
-            } catch (Exception salaryEx) {
-                // Non-fatal: HR can fix the salary row separately. But if
-                // the save attempt already corrupted this tx, flag it as a
-                // warning and let the row tx still try to commit — Spring
-                // will decide based on whether the tx was marked rollback-only.
-                response.addWarning("Row " + rowNum + " (" + employeeCode + "): salary structure not applied — "
-                        + salaryEx.getMessage());
-                log.warn("Skipped salary structure for {} on row {}: {}", employeeCode, rowNum, salaryEx.getMessage());
-            }
         }
 
         // User provisioning — always ROLE_EMPLOYEE. Admin/HR grants are a
@@ -640,55 +620,6 @@ public class EmployeeImportServiceImpl implements EmployeeImportService {
         Role role = roleRepository.findByName(effective).orElseThrow(
                 () -> new IllegalStateException("Role " + effective + " is missing — check Flyway seed data"));
         user.addRole(role);
-    }
-
-    // ------------------------------------------------------------------
-    // Salary structure upsert
-    // ------------------------------------------------------------------
-
-    private void upsertSalaryStructure(Employee employee, EmployeeImportDTO dto, boolean dryRun) {
-        if (dryRun || employee.getId() == null) return;
-
-        SalaryStructureType type;
-        try {
-            type = SalaryStructureType.valueOf(dto.getStructureType().trim().toUpperCase().replace(' ', '_'));
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unknown structureType: " + dto.getStructureType());
-        }
-
-        SalaryStructure ss = salaryStructureRepository.findByEmployeeId(employee.getId())
-                .orElseGet(SalaryStructure::new);
-
-        ss.setEmployee(employee);
-        ss.setStructureType(type);
-        parseBigDecimal(dto.getMonthlyGrossCtc()).ifPresent(ss::setMonthlyGrossCtc);
-        parseBigDecimal(dto.getNth()).ifPresent(ss::setNth);
-        parseBigDecimal(dto.getAnnualCtc()).ifPresent(ss::setAnnualCtc);
-        parseBigDecimal(dto.getTdsAmount()).ifPresent(ss::setTdsAmount);
-        parseBigDecimal(dto.getTdsRatePercent()).ifPresent(ss::setTdsRatePercent);
-        parseBigDecimal(dto.getEmployerPf()).ifPresent(ss::setEmployerPf);
-        parseBigDecimal(dto.getEmployeePf()).ifPresent(ss::setEmployeePf);
-        parseBigDecimal(dto.getEmployerEsi()).ifPresent(ss::setEmployerEsi);
-        parseBigDecimal(dto.getEmployeeEsi()).ifPresent(ss::setEmployeeEsi);
-        parseBigDecimal(dto.getLwfAmount()).ifPresent(ss::setLwfAmount);
-        parseBigDecimal(dto.getIncentives()).ifPresent(ss::setIncentives);
-        parseBigDecimal(dto.getOtherDeductions()).ifPresent(ss::setOtherDeductions);
-        parseInt(dto.getNumOfMonths()).ifPresent(ss::setNumOfMonths);
-
-        if (ss.getEffectiveFrom() == null) {
-            ss.setEffectiveFrom(employee.getDateOfJoining() != null ? employee.getDateOfJoining() : LocalDate.now());
-        }
-        if (ss.getIsActive() == null) {
-            ss.setIsActive(Boolean.TRUE);
-        }
-
-        // CTC model: no sensible defaults for monthlyGrossCtc — a row that
-        // declared structureType but no gross is a data error.
-        if (ss.getMonthlyGrossCtc() == null) {
-            throw new IllegalArgumentException("structureType present but monthlyGrossCtc missing");
-        }
-
-        salaryStructureRepository.save(ss);
     }
 
     // ------------------------------------------------------------------
