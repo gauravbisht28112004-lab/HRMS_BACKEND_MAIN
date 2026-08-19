@@ -123,6 +123,17 @@ public class SecurityConfig {
                 .requestMatchers("/api/departments/**").hasAnyRole("ADMIN", "HR")
 
                 // ---------------- Reports ----------------
+                // Commitment exports are scoped to the caller's own reporting
+                // subtree, so every supervisor level needs through this gate.
+                // The URL rule is deliberately coarse — it cannot tell WHICH
+                // team is being requested. The per-request ownership check is
+                // AuthzService#requireCanExportTeamReport /
+                // #requireCanExportEmployeeReport, called by
+                // CommitmentReportController. Widening this line without those
+                // guards in place would let any manager read any other
+                // manager's team.
+                .requestMatchers("/api/reports/commitment/**")
+                    .hasAnyRole("ADMIN", "HR", "MANAGER", "TEAM_LEADER", "ATL")
                 .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "HR", "MANAGER")
 
                 // ---------------- ATL dashboard ----------------

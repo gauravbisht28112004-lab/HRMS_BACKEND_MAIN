@@ -186,6 +186,7 @@ export const Sidebar = () => {
     const teamLeaderItems = [
       { label: 'Dashboard', path: '/', icon: LayoutDashboard },
       { label: 'My Team & Targets', path: '/my-team-targets', icon: Target },
+      { label: 'Team Reports', path: '/team-reports', icon: ClipboardList },
       { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 
@@ -251,6 +252,7 @@ export const Sidebar = () => {
       { label: 'Dashboard', path: '/', icon: LayoutDashboard },
       { label: 'My Team Commitment', path: '/atl-monthly-target', icon: Target },
       { label: 'Team Approvals', path: '/atl-daily-commitment', icon: ClipboardList },
+      { label: 'Team Reports', path: '/team-reports', icon: ClipboardList },
       { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 

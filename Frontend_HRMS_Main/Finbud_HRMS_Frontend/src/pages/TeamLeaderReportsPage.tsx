@@ -28,12 +28,17 @@ import type { CommitmentStatus, DailyCommitment, Employee } from '@/types';
  * button for Excel range export. The TL picks a single date for the table
  * and a date range for the export.
  */
+/**
+ * Local-calendar ISO date. `toISOString()` converts to UTC first, which in
+ * IST (UTC+5:30) rolls the date back a day for anything before 05:30 — that
+ * made the export default to "yesterday" and silently drop today's rows.
+ */
+const toLocalIso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 const NOW = new Date();
-const TODAY_ISO = NOW.toISOString().slice(0, 10);
-const startOfMonth = (() => {
-  const d = new Date(NOW.getFullYear(), NOW.getMonth(), 1);
-  return d.toISOString().slice(0, 10);
-})();
+const TODAY_ISO = toLocalIso(NOW);
+const startOfMonth = toLocalIso(new Date(NOW.getFullYear(), NOW.getMonth(), 1));
 
 const STATUS_FILTER_OPTIONS: { value: CommitmentStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'All statuses' },
@@ -95,16 +100,31 @@ export const TeamLeaderReportsPage = () => {
     return { totalTargetCalls, totalActualCalls, totalTargetDisbursal, totalActualDisbursal };
   }, [filtered]);
 
-  const employeeOptions = useMemo(
-    () => [
+  /**
+   * Options come from the fetched rows, not from `teamMembers`.
+   *
+   * The snapshot now spans the whole reporting subtree (employees under this
+   * user's TLs and ATLs), while `listByManager` only returns direct reports.
+   * Building the dropdown from direct reports would list supervisors who never
+   * file commitments and omit every employee who actually appears in the table
+   * — selecting any option would return zero rows. Deriving from the rows keeps
+   * the filter and the data provably in sync.
+   */
+  const employeeOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    rows.forEach((r) => {
+      const value = String(r.employeeId ?? '');
+      if (!value || seen.has(value)) return;
+      const code = r.employeeCode ? ` (${r.employeeCode})` : '';
+      seen.set(value, `${r.employeeName ?? `#${r.employeeId}`}${code}`);
+    });
+    return [
       { value: '', label: 'All team members' },
-      ...teamMembers.map((m) => ({
-        value: String(m.backendId ?? ''),
-        label: `${m.firstName} ${m.lastName}${m.id ? ` (${m.id})` : ''}`,
-      })),
-    ],
-    [teamMembers],
-  );
+      ...[...seen.entries()]
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+  }, [rows]);
 
   /** Stream the team's daily-commitment Excel export and trigger a browser download. */
   const downloadTeamReport = async () => {
@@ -180,10 +200,14 @@ export const TeamLeaderReportsPage = () => {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-4">
+        {/* Direct reports only — deliberately not the subtree size. For a
+            Manager these are the Team Leaders, whose own teams roll up into
+            the table below. Labelled precisely so the two numbers aren't
+            mistaken for each other. */}
         <StatsCard
-          label="Team Size"
+          label="Direct Reports"
           value={String(teamMembers.length)}
-          meta="Active direct reports"
+          meta="Supervisors/employees reporting to you"
           icon={<Users size={22} />}
         />
         <StatsCard

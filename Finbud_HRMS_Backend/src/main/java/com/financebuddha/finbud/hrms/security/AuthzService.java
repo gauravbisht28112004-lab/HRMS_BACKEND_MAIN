@@ -2,6 +2,7 @@ package com.financebuddha.finbud.hrms.security;
 
 import com.financebuddha.finbud.hrms.entity.Employee;
 import com.financebuddha.finbud.hrms.exception.ForbiddenException;
+import com.financebuddha.finbud.hrms.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -34,6 +35,8 @@ import java.util.Arrays;
 @Component("authz")
 @RequiredArgsConstructor
 public class AuthzService {
+
+    private final EmployeeRepository employeeRepository;
 
     /**
      * True if the authenticated user is the employee identified by
@@ -157,6 +160,55 @@ public class AuthzService {
             throw new ForbiddenException("You can only view your own team");
         }
         throw new ForbiddenException("Not authorized to view this team");
+    }
+
+    // =====================================================================
+    // Report-export guards
+    //
+    // The Excel exports span a supervisor's WHOLE subtree, not just their
+    // direct reports, so the ownership rule has to be expressed against the
+    // subtree too. Roles alone are not enough here: every Manager carries
+    // ROLE_MANAGER, so a plain hasRole('MANAGER') check would let any manager
+    // download any other manager's team by editing the id in the URL.
+    // =====================================================================
+
+    /**
+     * Guard for the team export. ADMIN/HR may export any node; a supervisor
+     * (MANAGER / TEAM_LEADER / ATL) may export only their own subtree, i.e.
+     * {@code rootId} must be their own employee primary-key id. Employees have
+     * no team and are refused.
+     *
+     * <p>Identical rule to {@link #requireCanActAsManager(Long)}; kept as a
+     * separate named method so the export path reads explicitly and can diverge
+     * later without disturbing the commitment-queue endpoints.
+     */
+    public void requireCanExportTeamReport(Long rootId) {
+        requireCanActAsManager(rootId);
+    }
+
+    /**
+     * Guard for the single-employee export. Allowed when the caller is
+     * ADMIN/HR, is the employee themselves, or is a supervisor with that
+     * employee somewhere beneath them in the reporting tree — a Manager
+     * reaching an employee through a TL and an ATL is fine; reaching into a
+     * sibling manager's branch is not.
+     */
+    public void requireCanExportEmployeeReport(Long employeeId) {
+        if (hasAnyRole("ADMIN", "HR") || isOwner(employeeId)) {
+            return;
+        }
+        if (hasAnyRole("MANAGER", "TEAM_LEADER", "ATL")) {
+            UserPrincipal principal = currentPrincipal();
+            Long callerId = principal != null ? principal.getEmployeePrimaryId() : null;
+            if (callerId != null && employeeId != null
+                    && employeeRepository.existsInSubtree(callerId, employeeId)) {
+                return;
+            }
+            throw new ForbiddenException(
+                    "You can only export reports for employees in your own team");
+        }
+        throw new ForbiddenException(
+                "Not authorized to export data for employee " + employeeId);
     }
 
     private UserPrincipal currentPrincipal() {

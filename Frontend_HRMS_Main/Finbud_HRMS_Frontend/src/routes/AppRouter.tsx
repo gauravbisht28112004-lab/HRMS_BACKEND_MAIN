@@ -101,6 +101,11 @@ export const AppRouter = () => (
           <Route element={<ProtectedRoute roles={['Manager']} />}>
             <Route path="/team-daily-commitment" element={<TeamLeaderDailyCommitmentPage />} />
             <Route path="/team-monthly-commitment" element={<TeamLeaderMonthlyCommitmentPage />} />
+          </Route>
+
+          {/* Team Reports is subtree-scoped on the backend, so every supervisor
+              level can use it — each sees only their own branch. */}
+          <Route element={<ProtectedRoute roles={['Manager', 'Team Leader', 'ATL']} />}>
             <Route path="/team-reports" element={<TeamLeaderReportsPage />} />
           </Route>
 

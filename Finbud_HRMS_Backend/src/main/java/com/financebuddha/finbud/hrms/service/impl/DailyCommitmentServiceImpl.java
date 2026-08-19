@@ -197,8 +197,17 @@ public class DailyCommitmentServiceImpl implements DailyCommitmentService {
     @Override
     @Transactional(readOnly = true)
     public List<DailyCommitmentResponse> listTeamForDate(Long managerId, LocalDate workDate) {
+        // Whole management subtree, not just direct reports — the chain is
+        // Manager → Team Leader → ATL → Employee and only the leaf tier files
+        // commitments, so a one-level lookup showed an empty snapshot to
+        // everyone above a Team Leader. Approval queues stay one-level on
+        // purpose; this is a read-only rollup.
+        List<Long> teamIds = employeeRepository.findSubtreeEmployeeIds(managerId);
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
         return dailyCommitmentRepository
-                .findByManagerIdAndWorkDate(managerId, workDate)
+                .findByEmployeeIdsAndWorkDateBetween(teamIds, workDate, workDate)
                 .stream()
                 .map(this::toResponse)
                 .toList();

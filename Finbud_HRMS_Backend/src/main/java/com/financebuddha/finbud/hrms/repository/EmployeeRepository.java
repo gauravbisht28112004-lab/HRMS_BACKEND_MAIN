@@ -73,6 +73,73 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     List<Employee> findActiveSubordinates(@Param("managerId") Long managerId);
 
     /**
+     * Every employee id in the management subtree beneath {@code rootId},
+     * at any depth — direct reports, their reports, and so on. The root
+     * itself is NOT included.
+     *
+     * <p>Needed because the reporting chain is multi-level
+     * (Manager → Team Leader → ATL → Employee) but daily commitments are
+     * only ever filed by the leaf tier. A one-level {@code manager_id = ?}
+     * lookup therefore returns nothing for anyone above a Team Leader.
+     *
+     * <p>Native query — Postgres {@code WITH RECURSIVE}, mirroring
+     * {@code DailyCommitmentRepository#aggregateSubtreeDisbursalByBranch}
+     * so subtree membership is defined identically in both places. Assumes
+     * an acyclic hierarchy, which the management chain is by construction.
+     */
+    @Query(value = """
+           WITH RECURSIVE subtree AS (
+               SELECT e.id
+                 FROM employees e
+                WHERE e.manager_id = :rootId
+               UNION ALL
+               SELECT c.id
+                 FROM employees c
+                 JOIN subtree s ON c.manager_id = s.id
+           )
+           SELECT s.id FROM subtree s
+           """, nativeQuery = true)
+    List<Long> findSubtreeEmployeeIds(@Param("rootId") Long rootId);
+
+    /**
+     * True if {@code candidateId} sits anywhere in the management subtree
+     * beneath {@code rootId}. Same recursion as
+     * {@link #findSubtreeEmployeeIds(Long)} but stops at the first hit instead
+     * of materialising the whole branch — used on the authorization path, which
+     * runs on every report request.
+     *
+     * <p>Because the hierarchy is a single-parent tree, this returning true is
+     * exactly the statement "this employee reports up to that supervisor,
+     * directly or through a TL/ATL, and to no other supervisor".
+     */
+    @Query(value = """
+           WITH RECURSIVE subtree AS (
+               SELECT e.id
+                 FROM employees e
+                WHERE e.manager_id = :rootId
+               UNION ALL
+               SELECT c.id
+                 FROM employees c
+                 JOIN subtree s ON c.manager_id = s.id
+           )
+           SELECT EXISTS (SELECT 1 FROM subtree s WHERE s.id = :candidateId)
+           """, nativeQuery = true)
+    boolean existsInSubtree(@Param("rootId") Long rootId, @Param("candidateId") Long candidateId);
+
+    /**
+     * Employees by id with their supervisor eagerly attached. Used by the
+     * commitment reports to build the summary roster without an N+1 on
+     * {@code manager} when rendering the "Reports To" column.
+     */
+    @Query("""
+           SELECT e FROM Employee e
+             LEFT JOIN FETCH e.manager
+            WHERE e.id IN :ids
+            ORDER BY e.firstName ASC, e.lastName ASC
+           """)
+    List<Employee> findAllByIdInWithManager(@Param("ids") List<Long> ids);
+
+    /**
      * All active employees that have no linked User row yet.
      * Used by the provision-missing endpoint to auto-create login accounts
      * for employees added directly to the DB without going through the import flow.

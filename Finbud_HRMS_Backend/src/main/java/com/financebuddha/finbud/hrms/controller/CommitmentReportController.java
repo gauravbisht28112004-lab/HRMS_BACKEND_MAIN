@@ -1,5 +1,6 @@
 package com.financebuddha.finbud.hrms.controller;
 
+import com.financebuddha.finbud.hrms.security.AuthzService;
 import com.financebuddha.finbud.hrms.service.CommitmentReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -25,13 +26,18 @@ import java.time.LocalDate;
  * bytes; the frontend handles the download via blob → ObjectURL the same
  * way the payslip download works (PayrollController#generatePayslipPdf).
  *
- * <p>Authorisation:
+ * <p>Authorisation. The role annotation is only the coarse gate — every
+ * supervisor carries the same role, so it cannot by itself stop one manager
+ * reading another manager's team. Each method therefore also calls an
+ * {@code AuthzService} guard that checks the caller's position in the
+ * reporting tree:
  * <ul>
- *   <li>Employee report ({@code /employee/{id}}) — TL/HR/Admin only. The
- *       employee themselves uses the {@code /me} variant.</li>
- *   <li>Self report ({@code /me}) — any authenticated user, scoped to
- *       their own row by the resolved employee id (handled by service).</li>
- *   <li>Team report ({@code /team/{managerId}}) — TL/HR/Admin only.</li>
+ *   <li>Employee report ({@code /employee/{id}}) — ADMIN/HR anyone; a
+ *       MANAGER/TEAM_LEADER/ATL only for an employee inside their own
+ *       subtree; the employee themselves for their own record.</li>
+ *   <li>Team report ({@code /team/{managerId}}) — ADMIN/HR any node; a
+ *       supervisor only their own subtree, which by the single-parent tree
+ *       property can never include another manager's TLs or ATLs.</li>
  * </ul>
  */
 @Slf4j
@@ -43,26 +49,33 @@ import java.time.LocalDate;
 public class CommitmentReportController {
 
     private final CommitmentReportService commitmentReportService;
+    private final AuthzService authzService;
 
     @GetMapping("/employee/{employeeId}.xlsx")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Daily commitment report for one employee (Excel)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'TEAM_LEADER', 'ATL') or @authz.isOwner(#employeeId)")
+    @Operation(summary = "Daily commitment report for one employee (Excel)",
+               description = "Supervisors may only export an employee inside their own reporting subtree.")
     public ResponseEntity<byte[]> employeeReport(
             @PathVariable Long employeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws IOException {
+        authzService.requireCanExportEmployeeReport(employeeId);
         byte[] bytes = commitmentReportService.employeeDailyXlsx(employeeId, startDate, endDate);
         String filename = "commitments-employee-%d-%s-to-%s.xlsx".formatted(employeeId, startDate, endDate);
         return excelResponse(filename, bytes);
     }
 
     @GetMapping("/team/{managerId}.xlsx")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    @Operation(summary = "Daily commitment report for a TL's team (Excel)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'TEAM_LEADER', 'ATL')")
+    @Operation(summary = "Daily commitment report for a supervisor's whole team (Excel)",
+               description = "Covers every employee in the caller's reporting subtree — a Manager gets the "
+                       + "employees under all their Team Leaders and ATLs. Supervisors may only export "
+                       + "their own subtree; ADMIN/HR may export any.")
     public ResponseEntity<byte[]> teamReport(
             @PathVariable Long managerId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws IOException {
+        authzService.requireCanExportTeamReport(managerId);
         byte[] bytes = commitmentReportService.teamDailyXlsx(managerId, startDate, endDate);
         String filename = "commitments-team-%d-%s-to-%s.xlsx".formatted(managerId, startDate, endDate);
         return excelResponse(filename, bytes);

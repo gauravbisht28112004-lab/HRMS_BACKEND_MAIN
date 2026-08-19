@@ -56,6 +56,33 @@ public interface DailyCommitmentRepository extends JpaRepository<DailyCommitment
                                                               @Param("endDate") LocalDate endDate);
 
     /**
+     * Commitment rows for an explicit set of employees within a date window.
+     *
+     * <p>Used by the team Excel report, which resolves the supervisor's whole
+     * management subtree first (see
+     * {@code EmployeeRepository#findSubtreeEmployeeIds}) and then pulls every
+     * matching row here. Replaces the old one-level
+     * {@code findByManagerIdAndWorkDateBetween}, which silently returned an
+     * empty sheet for anyone above a Team Leader.
+     *
+     * <p>{@code JOIN FETCH} on employee/approver avoids an N+1 when the report
+     * builder reads names off each row. Callers must pass a non-empty list —
+     * an empty {@code IN ()} is invalid, so the service short-circuits.
+     */
+    @Query("""
+           SELECT c FROM DailyCommitment c
+             JOIN FETCH c.employee e
+             LEFT JOIN FETCH e.manager
+             LEFT JOIN FETCH c.approvedBy
+            WHERE e.id IN :employeeIds
+              AND c.workDate BETWEEN :startDate AND :endDate
+            ORDER BY c.workDate DESC, e.firstName ASC
+           """)
+    List<DailyCommitment> findByEmployeeIdsAndWorkDateBetween(@Param("employeeIds") List<Long> employeeIds,
+                                                              @Param("startDate") LocalDate startDate,
+                                                              @Param("endDate") LocalDate endDate);
+
+    /**
      * Aggregate query for the Q3 leaderboard: total APPROVED disbursal per
      * employee within a date window. Returns rows of (employee_id, total).
      * The service maps to a ranked DTO list.
